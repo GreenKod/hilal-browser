@@ -106,6 +106,45 @@ if [ -d "$HILAL_REPO_ROOT/branding" ]; then
   done
 fi
 
+patch_already_present() {
+  local patch_path="$1"
+  local root="$2"
+  python3 - "$patch_path" "$root" <<'PY'
+import os, re, sys
+patch_path = sys.argv[1]
+root = sys.argv[2]
+added = {}
+current = None
+with open(patch_path, 'r', encoding='utf-8') as f:
+    for line in f:
+        if line.startswith('diff --git '):
+            m = re.search(r'^diff --git a/(.+?) b/(.+)$', line)
+            current = m.group(1) if m else None
+            if current:
+                added[current] = []
+        elif current is None:
+            continue
+        elif line.startswith(('--- ', '+++ ', 'index ', 'new file mode ', 'deleted file mode ', 'similarity index ', 'rename from ', 'rename to ', 'copy from ', 'copy to ', '@@ ')):
+            continue
+        elif line.startswith('+') and not line.startswith('+++'):
+            content = line[1:].rstrip('\n')
+            if content.strip():
+                added[current].append(content)
+if not any(added.values()):
+    sys.exit(1)
+for file_path, lines in added.items():
+    full = os.path.join(root, file_path)
+    if not os.path.exists(full):
+        sys.exit(1)
+    with open(full, 'r', encoding='utf-8', errors='ignore') as f:
+        text = f.read()
+    for line in lines:
+        if line not in text:
+            sys.exit(1)
+sys.exit(0)
+PY
+}
+
 # -- 2. Apply patches in series order ----------------------------------------
 
 read_series
@@ -122,6 +161,7 @@ else
       log "Patches are already up-to-date (matching checksum: $CURRENT_HASH). Skipping patch application."
       SKIP_PATCHES=1
     fi
+<<<<<<< HEAD
   fi
 
   if [ "$SKIP_PATCHES" = 0 ]; then
@@ -144,6 +184,20 @@ else
     log "Patches: $applied applied, $skipped already in tree."
     echo "$CURRENT_HASH" > "$STATE_FILE"
   fi
+=======
+    if patch_already_present "$patch_path" "$HILAL_FIREFOX_SRC"; then
+      log "Skip (already applied): $p"
+      skipped=$((skipped + 1))
+      continue
+    fi
+    log "Applying: $p"
+    if ! git -C "$HILAL_FIREFOX_SRC" apply --whitespace=nowarn "$patch_path"; then
+      die "Failed to apply $p. Try: scripts/apply.sh --force, or refresh patches against current upstream."
+    fi
+    applied=$((applied + 1))
+  done
+  log "Patches: $applied applied, $skipped already in tree."
+>>>>>>> 950b358 (chore: clean up code structure and remove unused code blocks)
 fi
 
 # -- 3. Copy any prefs/ overlays ---------------------------------------------

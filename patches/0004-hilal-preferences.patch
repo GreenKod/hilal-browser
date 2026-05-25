@@ -4,8 +4,6 @@ Adds a dedicated "Hilal Browser" category to about:preferences with
 workspace controls and a Reset Workspaces button. The pref binding is handled
 manually via JS.
 
-<<<<<<< HEAD
-=======
 diff --git a/browser/components/preferences/hilal.inc.xhtml b/browser/components/preferences/hilal.inc.xhtml
 new file mode 100644
 index 000000000000..248a4eb03db3
@@ -45,7 +43,6 @@ index 000000000000..248a4eb03db3
 +  </vbox>
 +</groupbox>
 +</html:template>
->>>>>>> 950b358 (chore: clean up code structure and remove unused code blocks)
 diff --git a/browser/components/preferences/main.js b/browser/components/preferences/main.js
 index 2561c3c48d35..8f09077ca2ed 100644
 --- a/browser/components/preferences/main.js

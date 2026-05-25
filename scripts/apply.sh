@@ -160,7 +160,6 @@ else
       log "Patches are already up-to-date (matching checksum: $CURRENT_HASH). Skipping patch application."
       SKIP_PATCHES=1
     fi
-<<<<<<< HEAD
   fi
 
   if [ "$SKIP_PATCHES" = 0 ]; then
@@ -174,6 +173,11 @@ else
         skipped=$((skipped + 1))
         continue
       fi
+      if patch_already_present "$patch_path" "$HILAL_FIREFOX_SRC"; then
+        log "Skip (already applied): $p"
+        skipped=$((skipped + 1))
+        continue
+      fi
       log "Applying: $p"
       if ! git -C "$HILAL_FIREFOX_SRC" apply --whitespace=nowarn "$patch_path"; then
         die "Failed to apply $p. Try: scripts/apply.sh --force, or refresh patches against current upstream."
@@ -183,20 +187,6 @@ else
     log "Patches: $applied applied, $skipped already in tree."
     echo "$CURRENT_HASH" > "$STATE_FILE"
   fi
-=======
-    if patch_already_present "$patch_path" "$HILAL_FIREFOX_SRC"; then
-      log "Skip (already applied): $p"
-      skipped=$((skipped + 1))
-      continue
-    fi
-    log "Applying: $p"
-    if ! git -C "$HILAL_FIREFOX_SRC" apply --whitespace=nowarn "$patch_path"; then
-      die "Failed to apply $p. Try: scripts/apply.sh --force, or refresh patches against current upstream."
-    fi
-    applied=$((applied + 1))
-  done
-  log "Patches: $applied applied, $skipped already in tree."
->>>>>>> 950b358 (chore: clean up code structure and remove unused code blocks)
 fi
 
 # -- 3. Copy any prefs/ overlays ---------------------------------------------
@@ -272,4 +262,3 @@ else
 fi
 
 log "All Hilal changes applied. Build with: scripts/build-macos.sh"
-

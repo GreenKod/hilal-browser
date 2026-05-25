@@ -1228,7 +1228,6 @@ index 8acc798e5d22..e3adb064b97c 100644
      /* Add 1 to tools and extensions count for "Customize sidebar" option */
      let enabledToolsAndExtensionsCount =
        this.enabledToolsAndExtensionsCount() + 1;
-<<<<<<< HEAD
 diff --git a/browser/locales/en-US/browser/sidebar.ftl b/browser/locales/en-US/browser/sidebar.ftl
 index 6bd76b8607ae..0a064b88febb 100644
 --- a/browser/locales/en-US/browser/sidebar.ftl
@@ -1664,6 +1663,3 @@ diff --git a/browser/components/preferences/main.js b/browser/components/prefere
    },
  };
  
-
-=======
->>>>>>> 950b358 (chore: clean up code structure and remove unused code blocks)

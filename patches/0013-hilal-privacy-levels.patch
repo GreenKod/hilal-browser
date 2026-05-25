@@ -9,8 +9,6 @@ workspace reset action restores the default Standard level.
  browser/components/preferences/main.js         | 19 +++++++++++++++++++
  2 files changed, 37 insertions(+), 1 deletion(-)
 
-<<<<<<< HEAD
-=======
 diff --git a/browser/components/preferences/hilal.inc.xhtml b/browser/components/preferences/hilal.inc.xhtml
 index 6a2f21e..1cfcdc4 100644
 --- a/browser/components/preferences/hilal.inc.xhtml
@@ -36,10 +34,9 @@ index 6a2f21e..1cfcdc4 100644
 +  </vbox>
 +</groupbox>
 +
- <groupbox id="hilalUiFixGroup" data-category="paneHilal" hidden="true">
-   <label><html:h2 data-l10n-id="hilal-uifix-header"/></label>
-   <vbox align="start">
->>>>>>> 950b358 (chore: clean up code structure and remove unused code blocks)
+<groupbox id="hilalUiFixGroup" data-category="paneHilal" hidden="true">
+  <label><html:h2 data-l10n-id="hilal-uifix-header"/></label>
+  <vbox align="start">
 diff --git a/browser/components/preferences/main.js b/browser/components/preferences/main.js
 index fdef5a3..d942f3c 100644
 --- a/browser/components/preferences/main.js

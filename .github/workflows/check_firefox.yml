@@ -15,17 +15,12 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0   # fetch all tags
 
-      - name: Set up Bash environment
-        run: |
-          sudo apt-get update && sudo apt-get install -y git
-
       - name: Determine latest stable Firefox tag
         id: latest
         run: |
-          git clone --depth 1 --filter=blob:none --no-checkout https://github.com/mozilla-firefox/firefox.git upstream_firefox
-          git -C upstream_firefox fetch --tags --quiet
-          LATEST_TAG=$(git -C upstream_firefox tag -l 'FIREFOX_*_RELEASE' | sort -V | tail -n1)
-          rm -rf upstream_firefox
+          LATEST_TAG=$(git ls-remote --tags https://github.com/mozilla-firefox/firefox.git \
+            | awk -F'[/]' '/FIREFOX_.*_RELEASE/ {print $NF}' \
+            | sort -V | tail -n1)
           echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
 
       - name: Read current pinned version

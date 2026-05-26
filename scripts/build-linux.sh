@@ -41,7 +41,18 @@ else
 fi
 
 if [ "$NO_LAG" -eq 1 ]; then
-  MAX_JOBS=${MAX_JOBS:-4}
+  # Determine available CPU cores
+  CORES=$(nproc)
+  if [ "$CORES" -ge 8 ]; then
+    MAX_JOBS=5
+  else
+    # Use all cores minus one to keep system responsive, but at least 1
+    if [ $CORES -gt 1 ]; then
+      MAX_JOBS=$((CORES - 1))
+    else
+      MAX_JOBS=1
+    fi
+  fi
   cmd=("./mach" "build" "-j" "$MAX_JOBS")
 else
   cmd=("./mach" "build")

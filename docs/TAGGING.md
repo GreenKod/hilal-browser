@@ -9,7 +9,14 @@ Bu belge, **Hilal Browser** projesinde hangi adımlarla etiket (tag) oluşturula
 
 1. **Otomatik kontrol** – `.github/workflows/check_firefox.yml` her saat başında çalışır ve upstream Firefox deposundaki `FIREFOX_*_RELEASE` tag lerinden en yenisini bulur.
 2. **FIREFOX_COMMIT dosyası** – En yeni tag, repository kökündeki `FIREFOX_COMMIT` dosyasına yazılır ve bir commit (`chore: bump Firefox version …`) ile push edilir.
-3. **Manuel güncelleme** – Eğer otomatik workflow çalıştırılamıyorsa, şu komutları terminalde çalıştırarak aynı işlemi elle yapabilirsiniz:
+3. **Etkileşimli manuel güncelleme** – Tercih edilen yerel yöntem:
+   ```bash
+   scripts/select-firefox-version.sh
+   git add FIREFOX_COMMIT
+   git commit -m "chore: bump Firefox version to <selected tag>"
+   git push origin HEAD
+   ```
+4. **Düşük seviye manuel güncelleme** – Eğer yardımcı script kullanılamıyorsa, şu komutları terminalde çalıştırarak aynı işlemi elle yapabilirsiniz:
    ```bash
    # 1. En yeni stabil tag'i öğren
    git clone --depth 1 --filter=blob:none --no-checkout https://github.com/mozilla-firefox/firefox.git tmp_firefox
@@ -47,6 +54,7 @@ Hilal‑Browser kendi kod tabanına da (patch‑set ve overlay) bir sürüm etik
 
 - **Deterministik build**: `FIREFOX_COMMIT` dosyasındaki tag, her geliştiricinin aynı Firefox commit'ini klonlamasını sağlar.
 - **Uygulama**: `scripts/setup-firefox.sh` ve `scripts/apply.sh` bu dosyayı okuyarak doğru checkout'i yapar; başka bir dosyaya manuel müdahale edilmez.
+- **Tercih edilen yerel araç**: `scripts/select-firefox-version.sh`, stabil Firefox release tag'lerini listeler ve seçimi güvenle `FIREFOX_COMMIT` dosyasına yazar.
 - **CI**: GitHub Actions workflow’u otomatik olarak `FIREFOX_COMMIT` dosyasını günceller, böylece CI/CD süreciniz her zaman güncel bir Firefox sürümüyle çalışır.
 - **Manuel override**: `FIREFOX_COMMIT` dosyasını elle değiştirerek belirli bir commit/tag’e zorlayabilirsiniz. Bu durumda workflow yine en yeni stable tag’i bulsa da dosyadaki değer önceliklidir.
 
@@ -55,6 +63,7 @@ Hilal‑Browser kendi kod tabanına da (patch‑set ve overlay) bir sürüm etik
 
 - `scripts/setup-firefox.sh` – Firefox kaynağını `FIREFOX_COMMIT` ile checkout eder.
 - `scripts/apply.sh` – Versiyon uyuşmazlığı varsa kullanıcıdan onay alır.
+- `scripts/select-firefox-version.sh` – Stabil Firefox release tag listesinden seçim yapıp `FIREFOX_COMMIT` dosyasını günceller.
 - `.github/workflows/check_firefox.yml` – Saatlik otomatik kontrol ve commit.
 - `FIREFOX_COMMIT` – Projede tek kaynak olarak kullanılan Firefox sürüm etiketi.
 

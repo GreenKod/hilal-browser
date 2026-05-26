@@ -92,6 +92,7 @@ The Firefox source tree under `./firefox/` is **gitignored** inside this reposit
 | Get a Firefox checkout next to this repo | `scripts/setup-firefox.sh` |
 | Apply every Hilal patch + overlay onto Firefox | `scripts/apply.sh` |
 | Regenerate patches from changes you made in `./firefox` | `scripts/refresh.sh` |
+| Pick and write a pinned Firefox release tag | `scripts/select-firefox-version.sh` |
 | Pull upstream Firefox and rebase Hilal on top | `scripts/sync-upstream.sh` |
 | Build on macOS | `scripts/build-macos.sh` |
 | Build/test the Flatpak package | `scripts/build-flatpak.sh` |

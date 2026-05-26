@@ -34,7 +34,7 @@ fetch_tags() {
 # -------------------------------------------------------------------------
 # Main flow
 # -------------------------------------------------------------------------
-FIREFOX_COMMIT_FILE="${HILAL_ROOT:-$(dirname "${BASH_SOURCE[0]}")/../FIREFOX_COMMIT"
+FIREFOX_COMMIT_FILE="${HILAL_ROOT:-$(dirname "${BASH_SOURCE[0]}")/../FIREFOX_COMMIT}"
 
 # 1) Get list of tags
 mapfile -t tags < <(fetch_tags)

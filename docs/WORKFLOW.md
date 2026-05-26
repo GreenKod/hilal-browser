@@ -62,6 +62,22 @@ You only need `setup-firefox.sh` once. After that, the `firefox/`
 directory is yours — it's a normal Mozilla checkout with its own
 `./mach` and its own git history.
 
+## Choosing the pinned Firefox version
+
+`FIREFOX_COMMIT` is the single source of truth for which upstream
+Firefox tag or commit this repo should use.
+
+To update it interactively, run:
+
+```bash
+scripts/select-firefox-version.sh
+```
+
+The script fetches stable upstream `FIREFOX_*_RELEASE` tags, lets you
+pick one from a numbered list, and writes the selected value into
+`FIREFOX_COMMIT`. It does not create a commit for you; review the
+change and commit it in this repo when ready.
+
 ## Editing source code
 
 Edit files inside `firefox/` directly. Use `./mach build`, `./mach

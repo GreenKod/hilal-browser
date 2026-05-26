@@ -109,10 +109,12 @@ fi
 patch_already_present() {
   local patch_path="$1"
   local root="$2"
-  python3 - "$patch_path" "$root" <<'PY'
+  local overlay_root="$HILAL_REPO_ROOT/prefs"
+  python3 - "$patch_path" "$root" "$overlay_root" <<'PY'
 import os, re, sys
 patch_path = sys.argv[1]
 root = sys.argv[2]
+overlay_root = sys.argv[3]
 added = {}
 current = None
 with open(patch_path, 'r', encoding='utf-8') as f:
@@ -133,6 +135,10 @@ with open(patch_path, 'r', encoding='utf-8') as f:
 if not any(added.values()):
     sys.exit(1)
 for file_path, lines in added.items():
+    # Overlay-managed files under prefs/ may legitimately diverge from the
+    # original patch content after later patches/localization updates.
+    if os.path.exists(os.path.join(overlay_root, file_path)):
+        continue
     full = os.path.join(root, file_path)
     if not os.path.exists(full):
         sys.exit(1)

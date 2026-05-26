@@ -31,20 +31,20 @@ if [ -f "$(dirname "$0")/../mozconfigs/linux" ]; then
   cp "$(dirname "$0")/../mozconfigs/linux" "$HILAL_FIREFOX_SRC/mozconfig"
 fi
 
+NO_LAG=0
+
 # If '--no-lag' is passed, limit parallel jobs (default 4).
 # Otherwise, let mach decide the number of jobs.
-if [ "$1" = "--no-lag" ]; then
+if [ $# -gt 0 ] && [ "$1" = "--no-lag" ]; then
   NO_LAG=1
   shift
-else
-  NO_LAG=0
 fi
 
 if [ "$NO_LAG" -eq 1 ]; then
   # Determine available CPU cores
   CORES=$(nproc)
   if [ "$CORES" -ge 8 ]; then
-    MAX_JOBS=5
+    MAX_JOBS=6
   else
     # Use all cores minus one to keep system responsive, but at least 1
     if [ $CORES -gt 1 ]; then

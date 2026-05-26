@@ -15,6 +15,7 @@
 # Usage:
 #   scripts/refresh.sh                       # diff HEAD -> 0001-hilal-local-changes.patch
 #   scripts/refresh.sh --base <ref>          # diff against <ref> instead of HEAD
+#   scripts/refresh.sh --format              # format modified files before diffing
 #   scripts/refresh.sh --from-commits <range>  # git format-patch <range>
 #
 # After running, review patches/ with `git diff` and update patches/series
@@ -30,12 +31,15 @@ require_firefox_src
 MODE="diff"
 BASE="HEAD"
 COMMIT_RANGE=""
+FORMAT_BEFORE_DIFF=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --base)
       [ $# -ge 2 ] || die "--base requires a ref"
       BASE="$2"; shift 2 ;;
+    --format)
+      FORMAT_BEFORE_DIFF=1; shift ;;
     --from-commits)
       [ $# -ge 2 ] || die "--from-commits requires a commit range like origin/main..hilal"
       MODE="commits"; COMMIT_RANGE="$2"; shift 2 ;;
@@ -115,7 +119,7 @@ case "$MODE" in
       fi
     done < <(git -C "$HILAL_FIREFOX_SRC" diff --name-only "$BASE")
 
-    if [ "${#files_to_format[@]}" -gt 0 ]; then
+    if [ "$FORMAT_BEFORE_DIFF" -eq 1 ] && [ "${#files_to_format[@]}" -gt 0 ]; then
       log "Formatting modified files in Firefox tree..."
       (cd "$HILAL_FIREFOX_SRC" && ./mach format "${files_to_format[@]}" || true)
     fi
@@ -145,9 +149,13 @@ case "$MODE" in
       --no-stat --no-signature \
       -o "$tmpdir" \
       "$COMMIT_RANGE" -- . ${EXCLUDES[@]}
+    mapfile -t generated_patches < <(find "$tmpdir" -maxdepth 1 -type f -name '*.patch' | sort)
+    if [ "${#generated_patches[@]}" -eq 0 ]; then
+      die "No patches were generated for commit range: $COMMIT_RANGE"
+    fi
     # Clear old patches that we are about to replace.
     find "$HILAL_REPO_ROOT/patches" -maxdepth 1 -type f -name '*.patch' -delete
-    cp "$tmpdir"/*.patch "$HILAL_REPO_ROOT/patches/"
+    cp "${generated_patches[@]}" "$HILAL_REPO_ROOT/patches/"
     # Rebuild the series file from the new patch filenames.
     {
       echo "# Hilal Browser patch series."

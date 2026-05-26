@@ -178,6 +178,7 @@ patch_path = sys.argv[1]
 root = sys.argv[2]
 overlay_root = sys.argv[3]
 added = {}
+removed = {}
 current = None
 with open(patch_path, 'r', encoding='utf-8') as f:
     for line in f:
@@ -186,6 +187,7 @@ with open(patch_path, 'r', encoding='utf-8') as f:
             current = m.group(1) if m else None
             if current:
                 added[current] = []
+                removed[current] = []
         elif current is None:
             continue
         elif line.startswith(('--- ', '+++ ', 'index ', 'new file mode ', 'deleted file mode ', 'similarity index ', 'rename from ', 'rename to ', 'copy from ', 'copy to ', '@@ ')):
@@ -194,6 +196,10 @@ with open(patch_path, 'r', encoding='utf-8') as f:
             content = line[1:].rstrip('\n')
             if content.strip():
                 added[current].append(content)
+        elif line.startswith('-') and not line.startswith('---'):
+            content = line[1:].rstrip('\n')
+            if content.strip():
+                removed[current].append(content)
 if not any(added.values()):
     sys.exit(1)
 for file_path, lines in added.items():
@@ -206,6 +212,9 @@ for file_path, lines in added.items():
         sys.exit(1)
     with open(full, 'r', encoding='utf-8', errors='ignore') as f:
         text = f.read()
+    for line in removed.get(file_path, []):
+        if line in text:
+            sys.exit(1)
     for line in lines:
         if line not in text:
             sys.exit(1)
@@ -395,4 +404,4 @@ if [ "${STASHED:-0}" = 1 ]; then
   git -C "$HILAL_FIREFOX_SRC" stash pop || warn "Stash pop had conflicts. Please resolve them in the Firefox directory."
 fi
 
-log "All Hilal changes applied. Build with: scripts/build-macos.sh"
+log "All Hilal changes applied. Build with: scripts/build-linux.sh"

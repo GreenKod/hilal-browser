@@ -24,6 +24,7 @@ set -euo pipefail
 
 FORCE=0
 NO_SYMLINKS=0
+STASHED=0
 for arg in "$@"; do
   case "$arg" in
     --force|-f) FORCE=1 ;;
@@ -37,11 +38,64 @@ for arg in "$@"; do
 done
 
 require_firefox_src
+# Determine expected Firefox commit from FIREFOX_COMMIT file
+FIREFOX_COMMIT_FILE="${HILAL_ROOT:-$(dirname "$0")/../FIREFOX_COMMIT}"
+if [ -f "$FIREFOX_COMMIT_FILE" ]; then
+  EXPECTED_COMMIT=$(cat "$FIREFOX_COMMIT_FILE" | tr -d " \n")
+else
+  EXPECTED_COMMIT="main"
+fi
+CURRENT_COMMIT=$(git -C "$HILAL_FIREFOX_SRC" rev-parse HEAD 2>/dev/null || echo "")
+if [ -n "$CURRENT_COMMIT" ] && [ "$CURRENT_COMMIT" != "$EXPECTED_COMMIT" ]; then
+  log "Current Firefox source is at $CURRENT_COMMIT but expected $EXPECTED_COMMIT."
+  while true; do
+    printf "[hilal] Update to expected version? (y/n): "
+    read -r answer
+    case "$answer" in
+      y|Y) log "Updating Firefox source to $EXPECTED_COMMIT..."; git -C "$HILAL_FIREFOX_SRC" fetch --tags; git -C "$HILAL_FIREFOX_SRC" checkout "$EXPECTED_COMMIT"; break ;;
+      n|N) log "Aborting apply due to version mismatch."; exit 1 ;;
+      *) echo "Please answer y or n." ;;
+    esac
+  done
+fi
+
+get_patched_files() {
+  local series_file="$HILAL_REPO_ROOT/patches/series"
+  [ -f "$series_file" ] || return 0
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line#"${line%%[![:space:]]*}"}"
+    line="${line%"${line##*[![:space:]]}"}"
+    [ -z "$line" ] && continue
+    [ "${line:0:1}" = "#" ] && continue
+    local patch_path="$HILAL_REPO_ROOT/patches/$line"
+    if [ -f "$patch_path" ]; then
+      grep -E "^diff --git a/" "$patch_path" | sed -E 's/^diff --git a\/(.+) b\/.+$/\1/' || true
+    fi
+  done < "$series_file" | sort -u
+}
 
 if [ "$FORCE" = 1 ]; then
-  warn "--force: resetting tracked files in $HILAL_FIREFOX_SRC to HEAD"
+  warn "--force: performing safe selective reset of patched files in $HILAL_FIREFOX_SRC to HEAD"
   warn "         and removing branding/hilal + prefs overlays."
-  git -C "$HILAL_FIREFOX_SRC" reset --hard HEAD
+
+  # Auto-stash developer modifications if present
+  if ! git -C "$HILAL_FIREFOX_SRC" diff --quiet || ! git -C "$HILAL_FIREFOX_SRC" diff --cached --quiet || [ -n "$(git -C "$HILAL_FIREFOX_SRC" status --porcelain)" ]; then
+    log "Stashing local changes in Firefox tree..."
+    git -C "$HILAL_FIREFOX_SRC" stash push -u -m "hilal-apply-backup"
+    STASHED=1
+  fi
+
+  # Reset and clean only the files touched by patches
+  patched_files=$(get_patched_files)
+  if [ -n "$patched_files" ]; then
+    log "Resetting and cleaning patched files..."
+    echo "$patched_files" | while read -r f; do
+      [ -z "$f" ] && continue
+      git -C "$HILAL_FIREFOX_SRC" checkout HEAD -- "$f" >/dev/null 2>&1 || true
+      git -C "$HILAL_FIREFOX_SRC" clean -f -- "$f" >/dev/null 2>&1 || true
+    done
+  fi
+
   rm -rf "$HILAL_FIREFOX_SRC/browser/branding/hilal"
   rm -f "$HILAL_FIREFOX_SRC/.hilal-applied"
   # Remove untracked files created by Hilal patches (new files not tracked by Firefox git).
@@ -162,10 +216,40 @@ else
   SKIP_PATCHES=0
 
   if [ "$FORCE" = 0 ] && [ -f "$STATE_FILE" ]; then
-    STORED_HASH=$(cat "$STATE_FILE" 2>/dev/null || true)
+    STORED_HASH=$(head -n 1 "$STATE_FILE" 2>/dev/null || true)
+    STORED_SHA=$(sed -n '2p' "$STATE_FILE" 2>/dev/null || true)
     if [ "$CURRENT_HASH" = "$STORED_HASH" ]; then
       log "Patches are already up-to-date (matching checksum: $CURRENT_HASH). Skipping patch application."
       SKIP_PATCHES=1
+    else
+      # If checksum has changed, check if we can perform a smart rollback of old patches
+      if [ -n "$STORED_SHA" ] && git -C "$HILAL_REPO_ROOT" cat-file -e "$STORED_SHA^{commit}" >/dev/null 2>&1; then
+        log "Detected patch changes. Attempting smart rollback of previously applied patches..."
+        OLD_SERIES=()
+        if git -C "$HILAL_REPO_ROOT" show "$STORED_SHA:patches/series" >/dev/null 2>&1; then
+          while IFS= read -r line || [ -n "$line" ]; do
+            line="${line#"${line%%[![:space:]]*}"}"
+            line="${line%"${line##*[![:space:]]}"}"
+            [ -z "$line" ] && continue
+            [ "${line:0:1}" = "#" ] && continue
+            OLD_SERIES+=("$line")
+          done < <(git -C "$HILAL_REPO_ROOT" show "$STORED_SHA:patches/series")
+        fi
+
+        if [ "${#OLD_SERIES[@]}" -gt 0 ]; then
+          tmp_patch=$(mktemp)
+          for (( i=${#OLD_SERIES[@]}-1; i>=0; i-- )); do
+            p="${OLD_SERIES[i]}"
+            if git -C "$HILAL_REPO_ROOT" show "$STORED_SHA:patches/$p" > "$tmp_patch" 2>/dev/null; then
+              if git -C "$HILAL_FIREFOX_SRC" apply --check --reverse "$tmp_patch" >/dev/null 2>&1; then
+                log "  Reversing: $p"
+                git -C "$HILAL_FIREFOX_SRC" apply --reverse --whitespace=nowarn "$tmp_patch" >/dev/null 2>&1 || true
+              fi
+            fi
+          done
+          rm -f "$tmp_patch"
+        fi
+      fi
     fi
   fi
 
@@ -192,7 +276,10 @@ else
       applied=$((applied + 1))
     done
     log "Patches: $applied applied, $skipped already in tree."
-    echo "$CURRENT_HASH" > "$STATE_FILE"
+    {
+      echo "$CURRENT_HASH"
+      git -C "$HILAL_REPO_ROOT" rev-parse HEAD 2>/dev/null || echo ""
+    } > "$STATE_FILE"
   fi
 fi
 
@@ -282,6 +369,11 @@ if ! verify_ubo_checksum; then
   log "uBlock Origin v${UBO_VERSION} successfully downloaded and verified."
 else
   log "uBlock Origin v${UBO_VERSION} is already present and verified."
+fi
+
+if [ "${STASHED:-0}" = 1 ]; then
+  log "Restoring your local changes from stash..."
+  git -C "$HILAL_FIREFOX_SRC" stash pop || warn "Stash pop had conflicts. Please resolve them in the Firefox directory."
 fi
 
 log "All Hilal changes applied. Build with: scripts/build-macos.sh"

@@ -1,0 +1,55 @@
+name: Check Firefox Stable Version
+
+on:
+  schedule:
+    - cron: '0 * * * *'   # run at the start of every hour
+  workflow_dispatch:      # allow manual trigger
+
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0   # fetch all tags
+
+      - name: Set up Bash environment
+        run: |
+          sudo apt-get update && sudo apt-get install -y git
+
+      - name: Determine latest stable Firefox tag
+        id: latest
+        run: |
+          git clone --depth 1 --filter=blob:none --no-checkout https://github.com/mozilla-firefox/firefox.git upstream_firefox
+          git -C upstream_firefox fetch --tags --quiet
+          LATEST_TAG=$(git -C upstream_firefox tag -l 'FIREFOX_*_RELEASE' | sort -V | tail -n1)
+          rm -rf upstream_firefox
+          echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+
+      - name: Read current pinned version
+        id: current
+        run: |
+          if [ -f FIREFOX_COMMIT ]; then
+            CURRENT=$(cat FIREFOX_COMMIT | tr -d '\n')
+          else
+            CURRENT=""
+          fi
+          echo "current=$CURRENT" >> $GITHUB_OUTPUT
+
+      - name: Compare and write latest version if newer
+        if: steps.latest.outputs.latest_tag != steps.current.outputs.current
+        run: |
+          echo "New Firefox version detected: ${{ steps.latest.outputs.latest_tag }}"
+          # Write the newest tag to a plain file for developers to see.
+          echo "${{ steps.latest.outputs.latest_tag }}" > LATEST_FIREFOX_TAG
+          # Optionally expose as an artifact for downstream jobs.
+          echo "Latest tag written to LATEST_FIREFOX_TAG file."
+        # No commit or push is performed.
+
+      - name: No update needed
+        if: steps.latest.outputs.latest_tag == steps.current.outputs.current
+        run: |
+          echo "Already at latest stable Firefox version (${{ steps.current.outputs.current }})"
+

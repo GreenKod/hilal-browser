@@ -16,19 +16,15 @@
 
 set -euo pipefail
 
+FIREFOX_REMOTE_URL="https://github.com/mozilla-firefox/firefox.git"
+
 # -------------------------------------------------------------------------
-# Helper: fetch all stable tags from upstream Firefox repo (shallow, tags only)
+# Helper: fetch all stable tags from upstream Firefox repo without cloning
 # -------------------------------------------------------------------------
 fetch_tags() {
-  local workdir
-  workdir=$(mktemp -d)
-  # shallow clone, no checkout – only .git metadata
-  git clone --depth 1 --filter=blob:none --no-checkout \
-    https://github.com/mozilla-firefox/firefox.git "$workdir" >/dev/null 2>&1
-  git -C "$workdir" fetch --tags --quiet
-  # list only tags that match the stable pattern and sort them naturally
-  git -C "$workdir" tag -l 'FIREFOX_*_RELEASE' | sort -V
-  rm -rf "$workdir"
+  git ls-remote --tags --refs "$FIREFOX_REMOTE_URL" 'refs/tags/FIREFOX_*_RELEASE' \
+    | awk '{ sub("refs/tags/", "", $2); print $2 }' \
+    | sort -uV
 }
 
 # -------------------------------------------------------------------------

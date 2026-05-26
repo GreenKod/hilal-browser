@@ -31,6 +31,32 @@ scripts/setup-firefox.sh    # clones Firefox into ./firefox
 scripts/apply.sh            # stamps Hilal changes onto ./firefox
 scripts/build-macos.sh      # delegates to ./mach build
 ```
+## searchfox-cli
+
+The `searchfox-cli` tool provides fast code search across the massive Firefox source tree.
+
+```bash
+cargo install searchfox-cli
+```
+
+Basic usage examples:
+
+```bash
+# Search for a class or method definition
+searchfox-cli --define 'SomeClass::SomeMethod'
+
+# Search by file path pattern
+searchfox-cli --path browser -q 'some string'
+
+# Limit results to a specific directory
+searchfox-cli --path browser/components -q 'sidebar'
+
+# Show up to 100 matches
+searchfox-cli --limit 100 --path toolkit -q 'Render'
+```
+
+Add `~/.cargo/bin` to your PATH to run `searchfox-cli` from any location.
+```
 
 You only need `setup-firefox.sh` once. After that, the `firefox/`
 directory is yours — it's a normal Mozilla checkout with its own

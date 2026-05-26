@@ -98,6 +98,28 @@ case "$MODE" in
   diff)
     out="$HILAL_REPO_ROOT/patches/0001-hilal-local-changes.patch"
     log "Generating $out (diff $BASE -- excludes overlays)"
+    # Get modified files (excluding overlays like branding/hilal and prefs)
+    files_to_format=()
+    while IFS= read -r f; do
+      [ -z "$f" ] && continue
+      excluded=0
+      for pattern in "${EXCLUDES[@]}"; do
+        pat="${pattern#:!}"
+        if [[ "$f" == "$pat"* ]]; then
+          excluded=1
+          break
+        fi
+      done
+      if [ "$excluded" = 0 ] && [ -f "$HILAL_FIREFOX_SRC/$f" ]; then
+        files_to_format+=("$f")
+      fi
+    done < <(git -C "$HILAL_FIREFOX_SRC" diff --name-only "$BASE")
+
+    if [ "${#files_to_format[@]}" -gt 0 ]; then
+      log "Formatting modified files in Firefox tree..."
+      (cd "$HILAL_FIREFOX_SRC" && ./mach format "${files_to_format[@]}" || true)
+    fi
+
     # shellcheck disable=SC2068
     diff_body="$(git -C "$HILAL_FIREFOX_SRC" diff "$BASE" -- . ${EXCLUDES[@]})"
     if [ -z "$diff_body" ]; then

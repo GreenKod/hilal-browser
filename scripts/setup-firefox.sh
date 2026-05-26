@@ -17,7 +17,18 @@ set -euo pipefail
 # shellcheck source=lib.sh
 . "$(dirname "$0")/lib.sh"
 
-UPSTREAM_URL="${HILAL_FIREFOX_UPSTREAM:-https://github.com/mozilla-firefox/firefox.git}"
+# Determine Firefox commit (stable tag). This will be a tag like FIREFOX_124_0_RELEASE.
+if [ -f "$FIREFOX_COMMIT_FILE" ]; then
+  FIREFOX_COMMIT=$(cat "$FIREFOX_COMMIT_FILE" | tr -d " \n")
+else
+  log "Detecting latest stable Firefox tag for initial checkout..."
+  latest_tag=$(git -C "$HILAL_FIREFOX_SRC" tag -l 'FIREFOX_*_RELEASE' | sort -V | tail -n1)
+  if [ -z "$latest_tag" ]; then
+    die "Could not find a stable Firefox tag in the upstream repository"
+  fi
+  FIREFOX_COMMIT=$latest_tag
+  echo "$FIREFOX_COMMIT" > "$FIREFOX_COMMIT_FILE"
+fi
 DO_PULL=0
 for arg in "$@"; do
   case "$arg" in
@@ -39,6 +50,25 @@ else
   log "Firefox checkout already present at $HILAL_FIREFOX_SRC"
   log "Fetching upstream..."
   git -C "$HILAL_FIREFOX_SRC" fetch origin
+  # Ensure we have all tags to detect the latest stable release
+  git -C "$HILAL_FIREFOX_SRC" fetch --tags
+
+  # If the commit identifier is missing or set to "latest", compute the newest stable tag
+  if [ -z "$FIREFOX_COMMIT" ] || [ "$FIREFOX_COMMIT" = "latest" ]; then
+    log "Detecting latest stable Firefox tag..."
+    # Tags are like FIREFOX_124_0_RELEASE; sort them naturally and take the newest
+    latest_tag=$(git -C "$HILAL_FIREFOX_SRC" tag -l 'FIREFOX_*_RELEASE' | sort -V | tail -n1)
+    if [ -z "$latest_tag" ]; then
+      die "Could not find a stable Firefox tag in the upstream repository"
+    fi
+    FIREFOX_COMMIT=$latest_tag
+    # Persist the resolved tag for reproducible builds
+    echo "$FIREFOX_COMMIT" > "$FIREFOX_COMMIT_FILE"
+  fi
+
+  log "Checking out Firefox commit/tag $FIREFOX_COMMIT"
+  git -C "$HILAL_FIREFOX_SRC" checkout "$FIREFOX_COMMIT"
+
 fi
 
 if [ "$DO_PULL" = 1 ]; then

@@ -31,7 +31,9 @@ if [ -f "$(dirname "$0")/../mozconfigs/linux" ]; then
   cp "$(dirname "$0")/../mozconfigs/linux" "$HILAL_FIREFOX_SRC/mozconfig"
 fi
 
-cmd=("./mach" "build")
+# Set default max parallel jobs (can be overridden via env var or --jobs argument)
+MAX_JOBS=${MAX_JOBS:-4}
+cmd=("./mach" "build" "-j" "$MAX_JOBS")
 run_after=0
 package_after=0
 

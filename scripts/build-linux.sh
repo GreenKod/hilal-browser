@@ -31,9 +31,21 @@ if [ -f "$(dirname "$0")/../mozconfigs/linux" ]; then
   cp "$(dirname "$0")/../mozconfigs/linux" "$HILAL_FIREFOX_SRC/mozconfig"
 fi
 
-# Set default max parallel jobs (can be overridden via env var or --jobs argument)
-MAX_JOBS=${MAX_JOBS:-4}
-cmd=("./mach" "build" "-j" "$MAX_JOBS")
+# If '--no-lag' is passed, limit parallel jobs (default 4).
+# Otherwise, let mach decide the number of jobs.
+if [ "$1" = "--no-lag" ]; then
+  NO_LAG=1
+  shift
+else
+  NO_LAG=0
+fi
+
+if [ "$NO_LAG" -eq 1 ]; then
+  MAX_JOBS=${MAX_JOBS:-4}
+  cmd=("./mach" "build" "-j" "$MAX_JOBS")
+else
+  cmd=("./mach" "build")
+fi
 run_after=0
 package_after=0
 
@@ -48,7 +60,14 @@ if [ $# -gt 0 ]; then
       package_after=1
       ;;
     --) shift; cmd=("./mach" "build" "$@") ;;
-    *)  cmd=("./mach" "build" "$@") ;;
+    *)
+  if [ "$NO_LAG" -eq 1 ]; then
+    cmd=("./mach" "build" "-j" "$MAX_JOBS" "$@")
+  else
+    cmd=("./mach" "build" "$@")
+  fi
+  ;;
+
   esac
 fi
 

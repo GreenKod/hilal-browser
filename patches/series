@@ -15,11 +15,11 @@
 0008-hilal-ublock.patch
 0009-hilal-version.patch
 0010-fix-macos-openrsync-dylib-copy.patch
-0011-hilal-ui-fix.patch
+0011-hilal-ui-fix.macos.patch
 0012-hilal-turkish-localization.patch
-0013-hilal-privacy-levels.patch
+
 0014-hilal-update-policy.patch
 0015-hilal-preferences-no-update-service.patch
-0016-hilal-bang-customization.patch
+
 0017-sidebar-layout-redesign.patch
 0018-workspace-context-isolation.patch

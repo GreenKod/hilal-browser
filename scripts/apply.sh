@@ -24,11 +24,13 @@ set -euo pipefail
 
 FORCE=0
 NO_SYMLINKS=0
+DISCARD_LOCAL=0
 STASHED=0
 for arg in "$@"; do
   case "$arg" in
     --force|-f) FORCE=1 ;;
     --no-symlinks) NO_SYMLINKS=1 ;;
+    --discard-local) DISCARD_LOCAL=1 ;;
     -h|--help)
       sed -n '2,17p' "$0"
       exit 0
@@ -48,15 +50,21 @@ fi
 CURRENT_COMMIT=$(git -C "$HILAL_FIREFOX_SRC" rev-parse HEAD 2>/dev/null || echo "")
 if [ -n "$CURRENT_COMMIT" ] && [ "$CURRENT_COMMIT" != "$EXPECTED_COMMIT" ]; then
   log "Current Firefox source is at $CURRENT_COMMIT but expected $EXPECTED_COMMIT."
-  while true; do
-    printf "[hilal] Update to expected version? (y/n): "
-    read -r answer
-    case "$answer" in
-      y|Y) log "Updating Firefox source to $EXPECTED_COMMIT..."; git -C "$HILAL_FIREFOX_SRC" fetch --tags; git -C "$HILAL_FIREFOX_SRC" checkout "$EXPECTED_COMMIT"; break ;;
-      n|N) log "Aborting apply due to version mismatch."; exit 1 ;;
-      *) echo "Please answer y or n." ;;
-    esac
-  done
+  if [ "$DISCARD_LOCAL" = "1" ]; then
+    log "[hilal] Discarding local changes and updating to $EXPECTED_COMMIT..."
+    git -C "$HILAL_FIREFOX_SRC" fetch --tags
+    git -C "$HILAL_FIREFOX_SRC" reset --hard "$EXPECTED_COMMIT"
+  else
+    while true; do
+      printf "[hilal] Update to expected version? (y/n): "
+      read -r answer
+      case "$answer" in
+        y|Y) log "Updating Firefox source to $EXPECTED_COMMIT..."; git -C "$HILAL_FIREFOX_SRC" fetch --tags; git -C "$HILAL_FIREFOX_SRC" checkout "$EXPECTED_COMMIT"; break ;;
+        n|N) log "Aborting apply due to version mismatch."; exit 1 ;;
+        *) echo "Please answer y or n." ;;
+      esac
+    done
+  fi
 fi
 
 get_patched_files() {
@@ -211,6 +219,17 @@ read_series
 if [ "${#SERIES[@]}" -eq 0 ]; then
   warn "patches/series is empty; no patches to apply."
 else
+  # OS filtering: Remove OS-specific patches that don't match current platform
+  OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+  FILTERED_SERIES=()
+  for p in "${SERIES[@]}"; do
+    if [[ "$p" == *.macos.patch && "$OS" != "darwin" ]]; then continue; fi
+    if [[ "$p" == *.linux.patch && "$OS" != "linux" ]]; then continue; fi
+    if [[ "$p" == *.windows.patch && "$OS" != "mingw"* && "$OS" != "cygwin" ]]; then continue; fi
+    FILTERED_SERIES+=("$p")
+  done
+  SERIES=("${FILTERED_SERIES[@]}")
+
   CURRENT_HASH=$(calculate_series_hash)
   STATE_FILE="$HILAL_FIREFOX_SRC/.hilal-applied"
   SKIP_PATCHES=0

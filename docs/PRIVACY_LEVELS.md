@@ -1,5 +1,7 @@
 # Hilal Privacy Levels
 
+> **Note:** The privacy‑level UI is now provided via a *prefs overlay* (`prefs/browser/components/preferences/hilal.inc.xhtml`). The original `0013‑hilal‑privacy‑levels.patch` has been removed from the series; the same UI is injected at build time.
+
 Hilal privacy levels are hardening profiles, not anonymity promises. They are
 designed to move Hilal toward LibreWolf-style defaults while keeping the tradeoffs
 visible to users.

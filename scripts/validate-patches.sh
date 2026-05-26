@@ -43,18 +43,34 @@ fi
 
 log "Verifying patch application sequence..."
 failed=0
-for p in "${SERIES[@]}"; do
-  patch_path="$HILAL_REPO_ROOT/patches/$p"
+# Detect current OS (Darwin for macOS, Linux for Linux etc.)
+CURRENT_OS=$(uname -s)
+# Build filtered series respecting optional [os] prefix in series entries
+FILTERED_SERIES=()
+for entry in "${SERIES[@]}"; do
+  # Pattern: [os] patchname or just patchname
+  if [[ $entry =~ ^\[(.+)\][[:space:]]+(.*)$ ]]; then
+    OS_PREFIX="${BASH_REMATCH[1]}"
+    PATCH_NAME="${BASH_REMATCH[2]}"
+    case "$OS_PREFIX" in
+      mac)   [[ "$CURRENT_OS" == "Darwin" ]] && FILTERED_SERIES+=("$PATCH_NAME") || log "[SKIP] $PATCH_NAME (mac-only)" ;;
+      linux) [[ "$CURRENT_OS" == "Linux" ]] && FILTERED_SERIES+=("$PATCH_NAME") || log "[SKIP] $PATCH_NAME (linux-only)" ;;
+      *)     log "[SKIP] $entry (unknown OS prefix)" ;;
+    esac
+  else
+    FILTERED_SERIES+=("$entry")
+  fi
+done
+
+for p in "${FILTERED_SERIES[@]}"; do
+  patch_path="${HILAL_REPO_ROOT}/patches/${p}"
   [ -f "$patch_path" ] || { warn "Patch file not found: $p"; failed=1; break; }
-  
-  if git -C "$TMP_DIR" apply --check --whitespace=nowarn "$patch_path" >/dev/null 2>&1; then
+  if git -C "$TMP_DIR" apply --check --whitespace=nowarn "$patch_path" > /dev/null 2>&1; then
     log "  [OK] $p"
-    # Actually apply it in the temporary clone so subsequent patches check against modified files
     git -C "$TMP_DIR" apply --whitespace=nowarn "$patch_path"
   else
     warn "  [FAIL] $p"
     failed=1
-    # Try running --check without redirecting to show the specific failure details to the developer
     git -C "$TMP_DIR" apply --check --whitespace=nowarn "$patch_path" || true
     break
   fi

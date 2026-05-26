@@ -45,34 +45,39 @@ Everything Hilal-specific lives in this repository:
 
 | Folder | Purpose |
 | --- | --- |
-| `patches/` | Numbered, focused `.patch` files (unified diffs) applied to Firefox in `series` order. |
+| `patches/` | Numbered, focused `.patch` files (unified diffs) applied to Firefox in `series` order. **Note:** `0013-hilal-privacy-levels.patch` and `0016-hilal-bang-customization.patch` have been removed because their functionality is now provided via overlays. |
 | `branding/` | Branding overlays. Subdirectories are copied to `browser/branding/<name>/` in Firefox. |
-| `prefs/` | Optional preference / configuration overlays mirroring the Firefox directory structure. |
+| `prefs/` | Optional preference / configuration overlays mirroring the Firefox directory structure. The privacy‑levels UI and Bangs configuration are now implemented here. |
 | `scripts/` | Workflow automation scripts for setup, apply, refresh, upstream sync, and builds. |
 | `docs/` | Workflow and build documentation. |
 
 ---
 
-## Quick Start (macOS)
+## Quick Start (Linux/macOS)
 
 ```bash
-# 1. Complete Mozilla's one-time macOS setup:
-#    https://firefox-source-docs.mozilla.org/setup/macos_build.html
+# 1. Complete Mozilla's one‑time setup for your platform (Linux or macOS)
+#    https://firefox-source-docs.mozilla.org/setup/linux_build.html  # or macOS_build.html
 
 # 2. Clone this repository
 git clone https://github.com/VastSea0/hilal-browser.git
 cd hilal-browser
 
-# 3. Clone Firefox into ./firefox (gitignored)
+# 3. Clone Firefox into ./firefox (git‑ignored)
 scripts/setup-firefox.sh
 
 # 4. Apply all Hilal patches and overlays
 scripts/apply.sh
 
-# 5. Build (delegates to ./mach build inside ./firefox)
-scripts/build-macos.sh
+# 5. **First build may require a clobber** because upstream changed libjpegturbo files.
+#    Run the following if you see a CLOBBER warning:
+#    $ mach clobber
+#    Then run the build again.
 
-# 6. Run the browser
+# 6. Build (delegates to ./mach build inside ./firefox)
+scripts/build-macos.sh   # or scripts/build-linux.sh for Linux
+
+# 7. Run the browser
 (cd firefox && ./mach run)
 ```
 
@@ -88,7 +93,7 @@ The Firefox source tree under `./firefox/` is **gitignored** inside this reposit
 | Apply every Hilal patch + overlay onto Firefox | `scripts/apply.sh` |
 | Regenerate patches from changes you made in `./firefox` | `scripts/refresh.sh` |
 | Pull upstream Firefox and rebase Hilal on top | `scripts/sync-upstream.sh` |
-| Build on macOS | `scripts/build-macos.sh` |
+| Build on macOS/Linux | `scripts/build-macos.sh` (or `scripts/build-linux.sh`) |
 
 All scripts accept `-h` for usage. See `docs/WORKFLOW.md` for the full developer flow.
 
@@ -97,32 +102,24 @@ All scripts accept `-h` for usage. See `docs/WORKFLOW.md` for the full developer
 ## Layering Mechanics
 
 ### Patches
-`patches/series` lists `.patch` files in the order they should be
-applied. Each file is a plain unified diff (compatible with `git apply`
-and `patch -p1`). `scripts/apply.sh` walks the series, skipping any
-patch that's already in the tree.
+`patches/series` lists `.patch` files in the order they should be applied. Each file is a plain unified diff (compatible with `git apply` and `patch -p1`). `scripts/apply.sh` walks the series, skipping any patch that's already in the tree.
 
-Keep patches **small, focused, and one-purpose**. One feature per
-patch, one bugfix per patch — same conventions that make a clean
-Phabricator review.
+Keep patches **small, focused, and one‑purpose**. One feature per patch, one bug‑fix per patch — same conventions that make a clean Phabricator review.
 
 ### Branding & prefs overlays
 Binary assets (icons, splash screens, etc.) make terrible patches.
-Instead, anything under `branding/<name>/` is `rsync`'d directly into
-`browser/branding/<name>/`. Anything under `prefs/` is copied to the
-matching path in the Firefox tree. This keeps `patches/` text-only and
-reviewable.
+Instead, anything under `branding/<name>/` is `rsync`'d directly into `browser/branding/<name>/`. Anything under `prefs/` is copied to the matching path in the Firefox tree. This keeps `patches/` text‑only and reviewable.
 
 ### Source tree layout
 ```
-hilal-browser/              <- this repo
-├── branding/hilal/         <- assets, mirrored into firefox/browser/branding/hilal/
-├── patches/series         <- order of patch application
-├── patches/*.patch        <- focused source-code patches
-├── prefs/                 <- optional pref / config overlays
-├── scripts/               <- workflow helpers
-├── docs/                  <- detailed docs
-└── firefox/               <- (gitignored) full Firefox checkout
+hilal-browser/              <-- this repo
+├── branding/hilal/         <-- assets, mirrored into firefox/browser/branding/hilal/
+├── patches/series         <-- order of patch application
+├── patches/*.patch        <-- focused source‑code patches (some removed)
+├── prefs/                 <-- optional pref / config overlays (privacy‑levels, bangs)
+├── scripts/               <-- workflow helpers
+├── docs/                  <-- detailed docs
+└── firefox/               <-- (gitignored) full Firefox checkout
 ```
 
 ---
@@ -130,18 +127,10 @@ hilal-browser/              <- this repo
 ## Documentation
 
 - `docs/WORKFLOW.md` — full developer workflow, conflict resolution, when to patch vs overlay
-- `docs/BUILD-MACOS.md` — macOS-specific build notes
-- `docs/BUILD-WINDOWS.md` — Windows-specific build notes
-- `docs/BUILD-LINUX.md` — Linux-specific build notes
+- `docs/BUILD-MACOS.md` — macOS‑specific build notes
+- `docs/BUILD-WINDOWS.md` — Windows‑specific build notes
+- `docs/BUILD-LINUX.md` — Linux‑specific build notes
 - `docs/UPSTREAM-SYNC.md` — how to roll forward to a newer Firefox
 - `docs/UPDATES.md` — application update channel, MAR creation, and release signing checklist
 
 ---
-
-## License
-
-The Hilal branding assets in `branding/hilal/` are © Hilal Browser
-contributors. The build glue, scripts, and patches in this repository
-are released under the
-[Mozilla Public License 2.0](https://www.mozilla.org/en-US/MPL/2.0/) to
-match Firefox.

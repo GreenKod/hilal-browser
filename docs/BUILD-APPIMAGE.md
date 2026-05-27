@@ -40,6 +40,9 @@ The default output path is:
 dist/hilal-browser-<version>-<arch>.AppImage
 ```
 
+`<version>` önce repodaki release tag'den alınır. `HEAD` üzerinde tag yoksa en yeni
+repo tag'i kullanılır; yalnızca tag bulunamazsa paket içindeki sürüme düşülür.
+
 For release-friendly Linux naming, especially on ARM64:
 
 ```bash

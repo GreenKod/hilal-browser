@@ -58,7 +58,12 @@ detect_arch() {
   printf '%s\n' "unknown"
 }
 
-app_version() {
+release_version() {
+  if repo_release_tag >/dev/null 2>&1; then
+    repo_release_tag
+    return 0
+  fi
+
   awk -F= '/^Version=/{print $2; exit}' "$1/application.ini"
 }
 
@@ -136,8 +141,8 @@ fi
 
 arch="$(detect_arch "$package_root")"
 arch_name="$(map_arch_name "$arch")"
-version="$(app_version "$package_root")"
-[ -n "$version" ] || die "Could not read Version from $package_root/application.ini"
+version="$(release_version "$package_root")"
+[ -n "$version" ] || die "Could not resolve a release version from repo tags or $package_root/application.ini"
 
 out_dir="${HILAL_APPIMAGE_OUT_DIR:-$HILAL_REPO_ROOT/dist}"
 mkdir -p "$out_dir"

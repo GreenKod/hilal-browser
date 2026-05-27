@@ -34,6 +34,36 @@ Hint: set HILAL_FIREFOX_SRC, or run scripts/setup-firefox.sh first."
   fi
 }
 
+repo_release_tag() {
+  if [ -n "${HILAL_RELEASE_TAG:-}" ]; then
+    printf '%s\n' "$HILAL_RELEASE_TAG"
+    return 0
+  fi
+
+  if command -v git >/dev/null 2>&1 && [ -d "$HILAL_REPO_ROOT/.git" ]; then
+    local tag=""
+    tag="$(
+      cd "$HILAL_REPO_ROOT" &&
+      git describe --tags --exact-match HEAD 2>/dev/null
+    )" || true
+    if [ -n "$tag" ]; then
+      printf '%s\n' "$tag"
+      return 0
+    fi
+
+    tag="$(
+      cd "$HILAL_REPO_ROOT" &&
+      git tag --sort=-creatordate | head -n 1
+    )" || true
+    if [ -n "$tag" ]; then
+      printf '%s\n' "$tag"
+      return 0
+    fi
+  fi
+
+  return 1
+}
+
 # Read patches/series into a bash array, stripping comments and blanks.
 read_series() {
   local series_file="$HILAL_REPO_ROOT/patches/series"

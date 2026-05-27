@@ -1,0 +1,3 @@
+. "$topsrcdir/../mozconfigs/base"
+ac_add_options --target=aarch64-linux-gnu
+ac_add_options --enable-bootstrap

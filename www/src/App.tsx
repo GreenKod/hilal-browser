@@ -148,7 +148,7 @@ export default function App() {
         getHilal: "Hilal'i Edin",
       },
       hero: {
-        chip: "Material 3 Expressive • Alpha",
+        chip: "Açık Kaynak • Alpha Sürümü",
         tagline: "Web sizin olsun.",
         subtitle:
           "Gözetimsiz, kısıtlamasız ve bağımsız bir masaüstü tarayıcısı. Yarı saydam Tahoe kenar çubuğu, izole konteyner çalışma alanları ve dahili gizlilik kalkanı ile internette tam kontrolü yeniden kazanın.",
@@ -262,7 +262,7 @@ export default function App() {
         getHilal: "Get Hilal",
       },
       hero: {
-        chip: "Material 3 Expressive • Alpha",
+        chip: "Open Source • Alpha Build",
         tagline: "The web, on your terms.",
         subtitle:
           "An uncompromised, surveillance-free desktop browser built on Firefox Gecko. Featuring translucent Tahoe sidebars, isolated multi-account workspaces, and built-in tracking protection.",
@@ -564,7 +564,7 @@ export default function App() {
         <div className="text-center max-w-2xl mx-auto mb-12 space-y-3">
           <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[var(--md-sys-color-tertiary-container)] text-[var(--md-sys-color-on-tertiary-container)] text-xs font-semibold">
             <Layers className="w-3.5 h-3.5" />
-            <span>M3 Segmented Stories</span>
+            <span>{lang === "tr" ? "Öne Çıkan Özellikler" : "Key Highlights"}</span>
           </div>
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-[var(--md-sys-color-on-surface)]">
             {lang === "tr" ? "Temel Yetenekler." : "Core Pillars."}

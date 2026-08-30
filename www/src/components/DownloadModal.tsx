@@ -7,7 +7,8 @@ import {
   Laptop,
   Terminal,
   ExternalLink,
-  CheckCircle2
+  CheckCircle2,
+  Package
 } from "lucide-react";
 import { GithubRelease, GithubAsset } from "../types";
 import { formatBytes } from "../utils/github";
@@ -17,7 +18,6 @@ interface DownloadModalProps {
   onClose: () => void;
   release: GithubRelease | null;
   lang: "tr" | "en";
-  theme: "light" | "dark";
 }
 
 export default function DownloadModal({
@@ -25,43 +25,42 @@ export default function DownloadModal({
   onClose,
   release,
   lang,
-  theme,
 }: DownloadModalProps) {
   const [downloadedAsset, setDownloadedAsset] = useState<GithubAsset | null>(null);
 
   const t = {
     tr: {
-      title: "Hilal Browser'ı İndir",
-      subtitle: "İşletim sisteminiz için derlenmiş resmi kurulum paketini seçin.",
+      headline: "Hilal Browser Kurulum Paketleri",
+      supportingText: "İşletim sisteminize uygun resmi derleme paketini seçin.",
       downloadStarted: "İndirme Başlatıldı",
-      downloadDesc: "Kurulum paketi doğrudan GitHub üzerinden indiriliyor.",
-      close: "Kapat",
-      redownload: "Tekrar İndir",
-      viewReleases: "Tüm sürümleri GitHub üzerinde inceleyin",
+      downloadDesc: "Dosya doğrudan GitHub Releases sunucularından aktarılıyor.",
+      closeBtn: "Kapat",
+      redownloadBtn: "Tekrar İndir",
+      viewAllOnGh: "GitHub Releases'de Tümünü Gör",
       platforms: {
-        macos: "macOS (Apple Silicon & Intel)",
-        windowsExe: "Windows (Kurulum Paketi .exe)",
-        windowsZip: "Windows (Taşınabilir .zip)",
-        linuxDeb: "Linux (Debian / Ubuntu .deb)",
-        linuxAppImage: "Linux (Evrensel .AppImage)",
-        linuxTar: "Linux (Kaynak Arşivi .tar.gz)"
+        macos: "macOS Universal (.dmg)",
+        windowsExe: "Windows Kurulum Paketi (.exe)",
+        windowsZip: "Windows Taşınabilir (.zip)",
+        linuxDeb: "Linux Debian / Ubuntu (.deb)",
+        linuxAppImage: "Linux Evrensel (.AppImage)",
+        linuxTar: "Linux Kaynak Paketi (.tar.gz)"
       }
     },
     en: {
-      title: "Download Hilal Browser",
-      subtitle: "Select the official build artifact for your operating system.",
+      headline: "Download Hilal Browser",
+      supportingText: "Select the official build artifact for your system.",
       downloadStarted: "Download Initiated",
-      downloadDesc: "The release package is downloading directly from GitHub.",
-      close: "Close",
-      redownload: "Download Again",
-      viewReleases: "Inspect all releases on GitHub",
+      downloadDesc: "Transferring directly from GitHub Releases.",
+      closeBtn: "Close",
+      redownloadBtn: "Download Again",
+      viewAllOnGh: "View All on GitHub Releases",
       platforms: {
-        macos: "macOS (Apple Silicon & Intel)",
-        windowsExe: "Windows (Installer .exe)",
-        windowsZip: "Windows (Portable .zip)",
-        linuxDeb: "Linux (Debian / Ubuntu .deb)",
-        linuxAppImage: "Linux (Universal .AppImage)",
-        linuxTar: "Linux (Tarball .tar.gz)"
+        macos: "macOS Universal (.dmg)",
+        windowsExe: "Windows Installer (.exe)",
+        windowsZip: "Windows Portable (.zip)",
+        linuxDeb: "Linux Debian / Ubuntu (.deb)",
+        linuxAppImage: "Linux Universal (.AppImage)",
+        linuxTar: "Linux Tarball (.tar.gz)"
       }
     }
   };
@@ -91,13 +90,11 @@ export default function DownloadModal({
     return { label: activeT.platforms.linuxTar, icon: <Terminal className="w-5 h-5" /> };
   }
 
-  const isDark = theme === "dark";
-
   return (
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
-          {/* Backdrop */}
+          {/* M3 Scrim Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -106,113 +103,98 @@ export default function DownloadModal({
             className="fixed inset-0 bg-black/60 backdrop-blur-sm"
           />
 
-          {/* Modal Card */}
+          {/* M3 Expressive Dialog Container */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.96, y: 12 }}
+            initial={{ opacity: 0, scale: 0.92, y: 16 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: 12 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-            className={`relative w-full max-w-lg rounded-2xl border p-6 sm:p-8 shadow-2xl transition-colors ${
-              isDark
-                ? "bg-[#111114] border-white/[0.1] text-[#f4f4f6]"
-                : "bg-[#ffffff] border-black/[0.1] text-[#18181b]"
-            }`}
+            exit={{ opacity: 0, scale: 0.92, y: 16 }}
+            transition={{ type: "spring", stiffness: 380, damping: 28 }}
+            className="relative w-full max-w-lg rounded-[32px] p-6 sm:p-8 bg-m3-container-high text-[var(--md-sys-color-on-surface)] shadow-2xl border border-[var(--md-sys-color-outline-variant)]/40 overflow-hidden"
           >
-            {/* Close Button */}
-            <button
-              onClick={onClose}
-              className={`absolute top-5 right-5 p-1.5 rounded-full transition-colors ${
-                isDark
-                  ? "text-neutral-400 hover:text-white hover:bg-white/10"
-                  : "text-neutral-500 hover:text-black hover:bg-black/5"
-              }`}
-            >
-              <X className="w-4 h-4" />
-            </button>
+            {/* Header Icon + Close */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-10 h-10 rounded-full bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] flex items-center justify-center">
+                <Package className="w-5 h-5" />
+              </div>
+              <button
+                onClick={onClose}
+                className="w-10 h-10 rounded-full flex items-center justify-center text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-highest)] transition-colors m3-state-layer"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
             {downloadedAsset ? (
-              <div className="text-center py-6">
-                <div className="mx-auto w-12 h-12 rounded-full bg-blue-500/15 text-blue-500 flex items-center justify-center mb-4">
-                  <CheckCircle2 className="w-6 h-6" />
+              <div className="text-center py-4 space-y-3">
+                <div className="mx-auto w-14 h-14 rounded-full bg-emerald-500/15 text-emerald-500 flex items-center justify-center">
+                  <CheckCircle2 className="w-7 h-7" />
                 </div>
-                <h3 className="text-xl font-bold tracking-tight">
+                <h3 className="text-2xl font-bold tracking-tight text-[var(--md-sys-color-on-surface)]">
                   {activeT.downloadStarted}
                 </h3>
-                <p className={`mt-1.5 text-sm ${isDark ? "text-neutral-400" : "text-neutral-600"}`}>
+                <p className="text-sm text-[var(--md-sys-color-on-surface-variant)]">
                   {activeT.downloadDesc}
                 </p>
-                <p className={`mt-3 text-xs font-mono px-3 py-1.5 rounded-lg inline-block ${
-                  isDark ? "bg-white/5 text-neutral-300" : "bg-black/5 text-neutral-700"
-                }`}>
+                <div className="p-3 rounded-[20px] bg-m3-container text-xs font-mono text-[var(--md-sys-color-on-surface)] inline-block">
                   {downloadedAsset.name} • {formatBytes(downloadedAsset.size)}
-                </p>
-                <div className="mt-6 flex justify-center gap-3">
+                </div>
+                <div className="pt-4 flex justify-center gap-3">
                   <button
                     onClick={() => handleDownload(downloadedAsset)}
-                    className="px-5 py-2.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-md transition-colors"
+                    className="px-6 py-3 rounded-full bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] font-semibold text-xs transition-transform hover:scale-105 active:scale-95 shadow-md"
                   >
-                    {activeT.redownload}
+                    {activeT.redownloadBtn}
                   </button>
                   <button
                     onClick={onClose}
-                    className={`px-5 py-2.5 rounded-full text-xs font-medium transition-colors ${
-                      isDark ? "bg-white/10 text-neutral-200 hover:bg-white/15" : "bg-black/5 text-neutral-800 hover:bg-black/10"
-                    }`}
+                    className="px-6 py-3 rounded-full bg-m3-container-lowest text-[var(--md-sys-color-on-surface)] font-medium text-xs hover:bg-m3-container transition-colors"
                   >
-                    {activeT.close}
+                    {activeT.closeBtn}
                   </button>
                 </div>
               </div>
             ) : (
               <div>
                 <div className="mb-6">
-                  <h3 className="text-xl font-bold tracking-tight">
-                    {activeT.title}
+                  <h3 className="text-2xl font-bold tracking-tight text-[var(--md-sys-color-on-surface)]">
+                    {activeT.headline}
                   </h3>
-                  <p className={`mt-1 text-xs ${isDark ? "text-neutral-400" : "text-neutral-600"}`}>
-                    {activeT.subtitle}
+                  <p className="mt-1.5 text-sm text-[var(--md-sys-color-on-surface-variant)]">
+                    {activeT.supportingText}
                   </p>
                 </div>
 
-                <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+                {/* Package list */}
+                <div className="space-y-2.5 max-h-[55vh] overflow-y-auto pr-1">
                   {assets.map((asset) => {
                     const info = getPlatformInfo(asset.name);
                     return (
                       <button
                         key={asset.id}
                         onClick={() => handleDownload(asset)}
-                        className={`w-full flex items-center justify-between p-3.5 rounded-xl border transition-all text-left group cursor-pointer ${
-                          isDark
-                            ? "border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.06] hover:border-white/[0.14]"
-                            : "border-black/[0.06] bg-black/[0.02] hover:bg-black/[0.05] hover:border-black/[0.12]"
-                        }`}
+                        className="w-full flex items-center justify-between p-4 rounded-[22px] bg-m3-container-lowest hover:bg-[var(--md-sys-color-secondary-container)]/30 border border-[var(--md-sys-color-outline-variant)]/30 transition-all text-left group cursor-pointer m3-state-layer"
                       >
-                        <div className="flex items-center gap-3.5">
-                          <div className={`transition-colors ${
-                            isDark ? "text-neutral-400 group-hover:text-blue-400" : "text-neutral-600 group-hover:text-blue-600"
-                          }`}>
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-full bg-m3-container flex items-center justify-center text-[var(--md-sys-color-primary)] group-hover:bg-[var(--md-sys-color-primary-container)] group-hover:text-[var(--md-sys-color-on-primary-container)] transition-colors">
                             {info.icon}
                           </div>
                           <div>
-                            <div className="text-xs sm:text-sm font-semibold">
+                            <div className="text-sm font-semibold text-[var(--md-sys-color-on-surface)]">
                               {info.label}
                             </div>
-                            <div className={`text-[11px] font-mono ${
-                              isDark ? "text-neutral-500" : "text-neutral-500"
-                            }`}>
+                            <div className="text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">
                               {asset.name}
                             </div>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2.5 shrink-0">
-                          <span className={`text-xs font-mono ${isDark ? "text-neutral-400" : "text-neutral-500"}`}>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <span className="text-xs font-mono text-[var(--md-sys-color-on-surface-variant)]">
                             {formatBytes(asset.size)}
                           </span>
-                          <div className={`p-1.5 rounded-lg transition-colors ${
-                            isDark ? "bg-white/5 text-neutral-400 group-hover:bg-blue-600 group-hover:text-white" : "bg-black/5 text-neutral-600 group-hover:bg-blue-600 group-hover:text-white"
-                          }`}>
-                            <Download className="w-3.5 h-3.5" />
+                          <div className="w-8 h-8 rounded-full bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] flex items-center justify-center shadow-sm">
+                            <Download className="w-4 h-4" />
                           </div>
                         </div>
                       </button>
@@ -220,17 +202,15 @@ export default function DownloadModal({
                   })}
                 </div>
 
-                <div className={`mt-6 pt-4 border-t text-center ${
-                  isDark ? "border-white/[0.06]" : "border-black/[0.06]"
-                }`}>
+                <div className="mt-6 pt-4 border-t border-[var(--md-sys-color-outline-variant)]/30 text-center">
                   <a
                     href={release?.html_url || "https://github.com/VastSea0/hilal-browser/releases"}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs text-blue-500 hover:text-blue-600 font-medium transition-colors"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--md-sys-color-primary)] hover:underline"
                   >
-                    <span>{activeT.viewReleases}</span>
-                    <ExternalLink className="w-3 h-3" />
+                    <span>{activeT.viewAllOnGh}</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
                   </a>
                 </div>
               </div>

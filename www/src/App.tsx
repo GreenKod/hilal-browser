@@ -1,18 +1,21 @@
-import React, { useState, useEffect, useRef, MouseEvent as ReactMouseEvent, TouchEvent as ReactTouchEvent } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Sun,
   Moon,
   Github,
   ChevronDown,
-  ExternalLink,
   Download,
   Terminal,
-  BookmarkCheck,
-  CodeXml,
-  Lock,
+  ExternalLink,
+  Apple,
+  Laptop,
+  Check,
+  Copy,
   ArrowRight,
-  ListRestart
+  Shield,
+  Layers,
+  Sparkles
 } from "lucide-react";
 import { SiDiscord } from "react-icons/si";
 
@@ -21,63 +24,34 @@ import {
   fetchGithubReleases,
   FALLBACK_RELEASE_TR,
   FALLBACK_RELEASE_EN,
-  formatLocalizedDate,
-  parseChangelogToSimpleLines,
-  formatBytes,
   detectOS,
-  getRecommendedAsset
+  getRecommendedAsset,
+  formatBytes
 } from "./utils/github";
+
 import DownloadModal from "./components/DownloadModal";
 
-const containerVariants = {
+const fadeIn = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] }
+  }
+};
+
+const staggerContainer = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.08,
+      staggerChildren: 0.12,
       delayChildren: 0.05
     }
   }
 };
 
-const itemVariants = {
-  hidden: { y: 20, opacity: 0 },
-  visible: {
-    y: 0,
-    opacity: 1,
-    transition: {
-      type: "spring",
-      stiffness: 100,
-      damping: 15
-    }
-  }
-};
-
-const cardContainerVariants = {
-  hidden: {},
-  visible: {
-    transition: {
-      staggerChildren: 0.1
-    }
-  }
-};
-
-const cardVariants = {
-  hidden: { y: 25, opacity: 0 },
-  visible: {
-    y: 0,
-    opacity: 1,
-    transition: {
-      type: "spring",
-      stiffness: 80,
-      damping: 15
-    }
-  }
-};
-
 export default function App() {
-  const [view, setView] = useState<"home" | "releases">("home");
-
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     const saved = localStorage.getItem("hilal-theme");
     return saved === "light" ? "light" : "dark";
@@ -85,80 +59,18 @@ export default function App() {
 
   const [lang, setLang] = useState<"tr" | "en">(() => {
     const saved = localStorage.getItem("hilal-lang");
-    return (saved === "en" || saved === "tr") ? saved : "tr";
+    return saved === "en" || saved === "tr" ? saved : "tr";
   });
 
   const [release, setRelease] = useState<GithubRelease | null>(null);
-  const [releases, setReleases] = useState<GithubRelease[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [isApiFallback, setIsApiFallback] = useState<boolean>(false);
-
   const [isDownloadOpen, setIsDownloadOpen] = useState<boolean>(false);
-  const [selectedAssetId, setSelectedAssetId] = useState<number | null>(null);
   const [detectedOS, setDetectedOS] = useState<string>("other");
+  const [activeFaq, setActiveFaq] = useState<number | null>(null);
+  const [copiedClone, setCopiedClone] = useState<boolean>(false);
 
   useEffect(() => {
     setDetectedOS(detectOS());
   }, []);
-
-  const [activeFaq, setActiveFaq] = useState<number | null>(null);
-
-  const [activeSection, setActiveSection] = useState<string>("home");
-  const [scrolled, setScrolled] = useState<boolean>(false);
-
-  const [sliderPosition, setSliderPosition] = useState<number>(50);
-  const [isSliderDragging, setIsSliderDragging] = useState<boolean>(false);
-  const sliderRef = useRef<HTMLDivElement | null>(null);
-
-  const handleSliderMove = (clientX: number) => {
-    if (!sliderRef.current) return;
-    const rect = sliderRef.current.getBoundingClientRect();
-    const x = clientX - rect.left;
-    const position = Math.max(0, Math.min(100, (x / rect.width) * 100));
-    setSliderPosition(position);
-  };
-
-  const handleSliderMouseDown = (e: ReactMouseEvent) => {
-    setIsSliderDragging(true);
-    handleSliderMove(e.clientX);
-  };
-
-  const handleSliderTouchStart = (e: ReactTouchEvent) => {
-    setIsSliderDragging(true);
-    if (e.touches.length > 0) {
-      handleSliderMove(e.touches[0].clientX);
-    }
-  };
-
-  useEffect(() => {
-    const onMouseMove = (e: MouseEvent) => {
-      if (isSliderDragging) handleSliderMove(e.clientX);
-    };
-
-    const onTouchMove = (e: TouchEvent) => {
-      if (isSliderDragging && e.touches.length > 0) {
-        handleSliderMove(e.touches[0].clientX);
-      }
-    };
-
-    const onMouseUp = () => {
-      setIsSliderDragging(false);
-    };
-
-    if (isSliderDragging) {
-      window.addEventListener("mousemove", onMouseMove);
-      window.addEventListener("mouseup", onMouseUp);
-      window.addEventListener("touchmove", onTouchMove);
-      window.addEventListener("touchend", onMouseUp);
-    }
-
-    return () => {
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mouseup", onMouseUp);
-      window.removeEventListener("touchmove", onTouchMove);
-      window.removeEventListener("touchend", onMouseUp);
-    };
-  }, [isSliderDragging]);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -175,1262 +87,720 @@ export default function App() {
   }, [lang]);
 
   useEffect(() => {
-    const loadReleaseData = async () => {
+    const loadData = async () => {
       try {
-        setLoading(true);
-        const releases = await fetchGithubReleases();
-        if (releases && releases.length > 0) {
-          setReleases(releases);
-          setRelease(releases[0]);
-          setIsApiFallback(false);
+        const data = await fetchGithubReleases();
+        if (data && data.length > 0) {
+          setRelease(data[0]);
         } else {
-          setReleases([]);
-          setIsApiFallback(true);
+          setRelease(lang === "en" ? FALLBACK_RELEASE_EN : FALLBACK_RELEASE_TR);
         }
-      } catch (err) {
-        setReleases([]);
-        setIsApiFallback(true);
-      } finally {
-        setLoading(false);
+      } catch {
+        setRelease(lang === "en" ? FALLBACK_RELEASE_EN : FALLBACK_RELEASE_TR);
       }
     };
-    loadReleaseData();
-  }, []);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
-      if (view !== "home") {
-        setActiveSection("surumler");
-        return;
-      }
-      const scrollPos = window.scrollY + 180;
-      const featuresEl = document.getElementById("ozellikler");
-      const interfaceEl = document.getElementById("arayuz");
-      const releasesEl = document.getElementById("surumler");
-      const visionEl = document.getElementById("vizyon");
-
-      if (visionEl && scrollPos >= visionEl.offsetTop) {
-        setActiveSection("vizyon");
-      } else if (releasesEl && scrollPos >= releasesEl.offsetTop) {
-        setActiveSection("surumler");
-      } else if (interfaceEl && scrollPos >= interfaceEl.offsetTop) {
-        setActiveSection("arayuz");
-      } else if (featuresEl && scrollPos >= featuresEl.offsetTop) {
-        setActiveSection("ozellikler");
-      } else {
-        setActiveSection("home");
-      }
-    };
-
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [view]);
-
-  const scrollToId = (id: string) => {
-    const element = document.getElementById(id);
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  };
+    loadData();
+  }, [lang]);
 
   const toggleTheme = () => {
-    setTheme(prev => (prev === "dark" ? "light" : "dark"));
+    setTheme((prev) => (prev === "dark" ? "light" : "dark"));
   };
 
-  const getOSIconForAsset = (name: string) => {
-    const n = name.toLowerCase();
-    if (n.endsWith(".exe")) return "WIN";
-    if (n.endsWith(".dmg")) return "MAC";
-    if (
-      n.endsWith(".deb") ||
-      n.endsWith(".appimage") ||
-      n.endsWith(".tar.gz") ||
-      n.endsWith(".tar.xz")
-    ) return "LNX";
-    if (n.endsWith(".zip")) return "WIN";
-    return "BIN";
-  };
-
-  const tr = {
-    nav: {
-      features: "Özellikler",
-      interface: "Arayüz",
-      releases: "Sürümler",
-      vision: "İlkeler",
-      installBtn: "Alpha İndir"
-    },
-    hero: {
-      alphaBadge: "Hilal Browser Alpha Aşamasındadır",
-      title1: "Firefox'u",
-      title2: "Hilal",
-      title3: "patch ve",
-      title4: "overlay",
-      title5: "katmanıyla kullanın.",
-      desc: "Hilal Browser, Firefox (Gecko) üzerine uygulanan patch ve overlay dosyalarından oluşur. Varsayılan paket uBlock Origin, dikey sekmeler ve Hilal marka dosyalarını içerir.",
-      downloadBtn: "Alpha Sürümünü İndir",
-      sourceBtn: "Kaynak Kodu İncele"
-    },
-    preview: {
-      title: "// ARAYÜZ TASARIMI",
-      sub: "Firefox arayüzü üzerinde Hilal değişiklikleri"
-    },
-    features: {
-      tag: "ÖZELLİKLER",
-      title: "Firefox üzerinde takip edilebilir değişiklikler.",
-      desc: "Bu sitedeki iddialar repodaki patch, overlay ve betiklerle doğrulanabilir.",
-      card1Title: "Firefox (Gecko) Altyapısı",
-      card1Desc: "Hilal Browser, upstream Firefox kaynağını `engine/` içine çeker ve Hilal değişikliklerini `changes/` üzerinden uygular.",
-      card1Foot: "Bağımsız Motor",
-      card2Title: "Dahili uBlock Origin Kalkanı",
-      card2Desc: "uBlock Origin XPI kuruluma dahil edilir ve varsayılan profil için yüklenir.",
-      card2Foot: "Varsayılan Eklenti",
-      card3Title: "Dikey Sekmeler",
-      card3Desc: "Dikey sekmeler ve sol kenar çubuğu varsayılan ayarlar ve patch dosyalarıyla etkinleştirilir.",
-      card3Foot: "Sol Kenar Çubuğu"
-    },
-    releases: {
-      tag: "SÜRÜMLER",
-      title: "Aktif Sürümler ve Değişiklik Günlüğü",
-      fallbackNotice: "GitHub API limitleri nedeniyle lokal önbellek verileri sunulmaktadır.",
-      latestAlpha: "GÜNCEL YAYIN",
-      binaryTitle: "Kurulum Paketleri",
-      allReleasesLink: "Tüm sürümleri GitHub üzerinde listele",
-      changelogTitle: "DEĞİŞİKLİK NOTLARI",
-      timelineTitle: "Sürüm Tarihçesi",
-      timelineSubtitle: "GitHub Releases akışından anlık sürüm notları ve platform detayları.",
-      buildTypes: "Desteklenen formatlar",
-      noBuildAssets: "Yayın paketi bulunamadı",
-      currentBuild: "Aktif",
-      viewRelease: "GitHub'da İncele",
-      fallbackChangelog: "Sürüm detayları şu an yüklenemedi. Ayrıntılar için lütfen resmi GitHub sayfamızı kontrol edin.",
-      bugReport: "Geri Bildirim Bildir",
-      commits: "Commit Geçmişi"
-    },
-    principles: {
-      tag: "İLKELER",
-      title: "Kaynak kodu, patch sırası ve upstream pini açık.",
-      card1Title: "Açık Kaynak",
-      card1Desc: "Patch dosyaları, overlay dosyaları, build betikleri ve upstream pin bu GitHub deposundadır.",
-      card1Link: "GitHub deposunu ziyaret et",
-      card2Title: "Yerel Değişiklikler",
-      card2Desc: "`./bin/hil apply` Hilal değişikliklerini yerel Firefox checkout'una uygular; `./bin/hil refresh` değişiklikleri tekrar patch dosyalarına yazar.",
-      card2Foot: "PATCH AKIŞI"
-    },
-    faq: {
-      tag: "S.S.S.",
-      title: "Sıkça Sorulan Sorular"
-    },
-    footer: {
-      quote: "Firefox için Hilal patch ve overlay katmanı.",
-      install: "İndir",
-      copyright: "Hilal Browser projesi. Bir Firefox (Gecko) katmanıdır.",
-      license: "MPL 2.0 Özgür Yazılım Lisansı ile koruma altındadır."
+  const scrollToId = (id: string) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   };
 
-  const en = {
-    nav: {
-      features: "Features",
-      interface: "Interface",
-      releases: "Releases",
-      vision: "Principles",
-      installBtn: "Download Alpha"
-    },
-    hero: {
-      alphaBadge: "Hilal Browser is in Alpha Phase",
-      title1: "Firefox with",
-      title2: "Hilal",
-      title3: "patch and",
-      title4: "overlay",
-      title5: "changes.",
-      desc: "Hilal Browser applies repo-tracked patches and overlays to upstream Firefox. The default package includes uBlock Origin, vertical tabs, and Hilal branding files.",
-      downloadBtn: "Download Alpha Build",
-      sourceBtn: "Inspect Source Code"
-    },
-    preview: {
-      title: "// INTERFACE LAYOUT",
-      sub: "Hilal changes applied to Firefox chrome"
-    },
-    features: {
-      tag: "FEATURES",
-      title: "Firefox changes you can verify in the repo.",
-      desc: "Each claim here maps to a patch, overlay, script, or release artifact.",
-      card1Title: "Firefox (Gecko) Core",
-      card1Desc: "Hilal Browser fetches upstream Firefox into `engine/` and applies Hilal changes from `changes/`.",
-      card1Foot: "Independent Core",
-      card2Title: "Built-in uBlock Origin",
-      card2Desc: "The uBlock Origin XPI is included in the default package and installed for the default profile.",
-      card2Foot: "Default Add-on",
-      card3Title: "Vertical Tabs",
-      card3Desc: "Vertical tabs and the left sidebar are enabled through preferences and Firefox patch files.",
-      card3Foot: "Left Sidebar"
-    },
-    releases: {
-      tag: "RELEASES",
-      title: "Active Builds and System Changelog",
-      fallbackNotice: "Serving cached data due to GitHub API rate limits.",
-      latestAlpha: "LATEST BUILD",
-      binaryTitle: "Installation Packages",
-      allReleasesLink: "View all releases on GitHub",
-      changelogTitle: "CHANGELOG DETAILS",
-      timelineTitle: "Release History",
-      timelineSubtitle: "Live version updates, build targets, and summary notes pulled from GitHub.",
-      buildTypes: "Supported formats",
-      noBuildAssets: "No build artifacts",
-      currentBuild: "Active",
-      viewRelease: "Inspect on GitHub",
-      fallbackChangelog: "Release details could not be loaded. Please refer to the official GitHub releases for detailed specs.",
-      bugReport: "Submit Feedback",
-      commits: "Commit History"
-    },
-    principles: {
-      tag: "CORE PRINCIPLES",
-      title: "Source, patch order, and upstream pin are public.",
-      card1Title: "Open Source",
-      card1Desc: "Patches, overlays, build scripts, and upstream metadata live in this repository.",
-      card1Link: "Browse source on GitHub",
-      card2Title: "Local Patch Workflow",
-      card2Desc: "`./bin/hil apply` applies Hilal changes to the local Firefox checkout; `./bin/hil refresh` writes local edits back to patch files.",
-      card2Foot: "PATCH WORKFLOW"
-    },
-    faq: {
-      tag: "F.A.Q.",
-      title: "Frequently Asked Questions"
-    },
-    footer: {
-      quote: "A Hilal patch and overlay layer for Firefox.",
-      install: "Download",
-      copyright: "Hilal Browser project. A Firefox (Gecko) overlay.",
-      license: "Protected under the MPL 2.0 Free Software License."
-    }
-  };
-
-  const activeT = lang === "en" ? en : tr;
-
-  const faqs = {
-    tr: [
-      {
-        q: "Hilal Browser hangi altyapıyı kullanıyor?",
-        a: "Hilal Browser, upstream Firefox (Gecko) kaynak kodu üzerine uygulanan patch ve overlay dosyalarıyla oluşturulur."
-      },
-      {
-        q: "Alpha sürümü ne anlama geliyor?",
-        a: "Alpha sürümü, buildlerin test amaçlı yayımlandığı anlamına gelir. Günlük kullanımda hata veya eksik paket görülebilir."
-      },
-      {
-        q: "Eklentilerimi kullanmaya devam edebilir miyim?",
-        a: "Evet. Hilal Browser Firefox eklenti altyapısını kullanır. uBlock Origin varsayılan pakete eklenmiştir."
-      },
-      {
-        q: "Dikey sekmeler (Vertical Tabs) nasıl optimize edildi?",
-        a: "Dikey sekmeler sol kenar çubuğunda gösterilir. İlgili davranışlar tercih dosyaları ve Firefox patchleriyle etkinleştirilir."
-      }
-    ],
-    en: [
-      {
-        q: "What technical engine powers Hilal Browser?",
-        a: "Hilal Browser is built by applying patch and overlay files to upstream Firefox (Gecko)."
-      },
-      {
-        q: "What does an Alpha phase represent?",
-        a: "An alpha release is published for testing. Bugs, missing packages, and platform-specific issues may still appear."
-      },
-      {
-        q: "Can I continue to use my standard add-ons?",
-        a: "Yes. Hilal Browser uses Firefox's add-on system. uBlock Origin is included in the default package."
-      },
-      {
-        q: "How are the Vertical Tabs designed and optimized?",
-        a: "Vertical tabs are shown in the left sidebar and enabled through preference files and Firefox patches."
-      }
-    ]
-  };
-
-  const faqList = faqs[lang] || faqs.tr;
-
-  const activeRelease = isApiFallback || !release
-    ? (lang === "en" ? FALLBACK_RELEASE_EN : FALLBACK_RELEASE_TR)
-    : release;
-
+  const activeRelease = release || (lang === "en" ? FALLBACK_RELEASE_EN : FALLBACK_RELEASE_TR);
   const recommendedAsset = activeRelease?.assets
     ? getRecommendedAsset(activeRelease.assets, detectedOS as any)
     : null;
 
-  const allReleasesTimeline = isApiFallback || releases.length === 0
-    ? [activeRelease]
-    : releases;
-
-  const getBuildTypeForAsset = (name: string) => {
-    const lower = name.toLowerCase();
-    if (lower.endsWith(".mar")) return "Update";
-    if (lower.endsWith(".dmg")) return "macOS DMG";
-    if (lower.endsWith(".installer.exe")) return "Windows Installer";
-    if (lower.endsWith(".exe")) return "Windows";
-    if (lower.endsWith(".zip")) return "Windows ZIP";
-    if (lower.endsWith(".deb")) return "Linux DEB";
-    if (lower.endsWith(".appimage")) return "Linux AppImage";
-    if (lower.endsWith(".tar.gz") || lower.endsWith(".tar.xz")) return "Linux Tarball";
-    return "Binary";
+  const handleCopyCommand = () => {
+    const cmd = "git clone https://github.com/VastSea0/hilal-browser.git && cd hilal-browser && ./bin/hil setup";
+    navigator.clipboard.writeText(cmd);
+    setCopiedClone(true);
+    setTimeout(() => setCopiedClone(false), 2000);
   };
 
-  const getBuildTypesForRelease = (item: GithubRelease) => {
-    const types = new Set<string>();
-    for (const asset of item.assets || []) {
-      types.add(getBuildTypeForAsset(asset.name));
-    }
-    return Array.from(types);
+  const isDark = theme === "dark";
+
+  const t = {
+    tr: {
+      nav: {
+        features: "Özellikler",
+        download: "İndir",
+        github: "GitHub",
+        getHilal: "Hilal'i Edin",
+      },
+      hero: {
+        tagline: "Web sizin olsun.",
+        subtitle:
+          "Gözetimsiz, kısıtlamasız ve bağımsız bir masaüstü tarayıcısı. Yarı saydam Tahoe kenar çubuğu, izole konteyner çalışma alanları ve dahili gizlilik kalkanı ile internette tam kontrolü yeniden kazanın.",
+        downloadBtn: {
+          macos: "macOS için İndir",
+          windows: "Windows için İndir",
+          linux: "Linux için İndir",
+          other: "Alpha Sürümünü İndir",
+        },
+        viewAllDownloads: "Tüm platformlar (.dmg, .exe, .deb, .zip)",
+      },
+      stories: [
+        {
+          tag: "01 / TAHOE ARAYÜZÜ",
+          title: "Göz yormayan, dikkati sayfalara veren arayüz.",
+          description:
+            "Sekmeler solda, dikkatiniz tam merkezde. Web sayfasının renk tonlarına usulca uyum sağlayan yarı saydam kenar çubuğu ve kalabalığı ortadan kaldıran kompakt araç çubuğu.",
+          image: isDark ? "/welcome-compact-vertical.png" : "/welcome-standard-vertical.png",
+          alt: "Hilal Tahoe Sidebar Arayüzü",
+        },
+        {
+          tag: "02 / ÇALIŞMA ALANLARI",
+          title: "İş, kişisel yaşam ve projeleriniz. Tamamen izole.",
+          description:
+            "Sekmeler sadece görünüşte ayrılmaz; Multi-Account Containers sayesinde her çalışma alanı bağımsız çerezler ve oturumlar barındırır. Farklı hesaplar için onlarca pencere açma karmaşasına son verin.",
+          image: "/welcome-workspaces-on.png",
+          alt: "Hilal İzole Konteyner Çalışma Alanları",
+        },
+        {
+          tag: "03 / MAHREMİYET VE GİZLİLİK",
+          title: "Sıfır gözetim. Dahili kalkan ve sayfa temizleyici.",
+          description:
+            "uBlock Origin varsayılan olarak dahildir; telemetri ve arka plan izleyicileri kökten engellenir. Element Zapper ile dikkatinizi dağıtan her türlü banner veya öğeyi tek tıkla sonsuza dek yok edin.",
+          image: "/welcome-toolbar-hidden.png",
+          alt: "Hilal Minimalist Kompakt Mod",
+        },
+      ],
+      openSourceSection: {
+        tag: "04 / AÇIK KAYNAK VE MİMARİ",
+        title: "Bağımsız bir katman. Güvenilir Firefox Gecko motoru.",
+        description:
+          "Hilal, upstream Firefox Gecko motoru üzerine inşa edilen şeffaf ve açık kaynaklı bir yama katmanıdır. Tüm Firefox eklentileriniz (AMO) ve güvenlik güncellemeleri gecikmeksizin eksiksiz çalışır.",
+        commandLabel: "Geliştiriciler için tek satırda derleme:",
+      },
+      downloadSection: {
+        title: "Hilal'i Deneyin.",
+        subtitle: "Özgür, hızlı ve sizin kontrolünüzde bir internet.",
+        platforms: [
+          {
+            name: "macOS",
+            spec: "Apple Silicon & Intel • Universal .dmg",
+            icon: <Apple className="w-6 h-6" />,
+          },
+          {
+            name: "Windows",
+            spec: "Windows 10/11 • 64-bit .exe & Taşınabilir .zip",
+            icon: <Laptop className="w-6 h-6" />,
+          },
+          {
+            name: "Linux",
+            spec: "Ubuntu / Debian .deb • AppImage • Tarball",
+            icon: <Terminal className="w-6 h-6" />,
+          },
+        ],
+        directDownload: "İndir",
+      },
+      faq: {
+        title: "Sıkça Sorulan Sorular",
+        items: [
+          {
+            q: "Hilal Browser nedir ve geleneksel çatallamalardan (fork) farkı nedir?",
+            a: "Hilal, Firefox kod tabanından kopan hantal bir fork değildir. Upstream Firefox Gecko motoru üzerine Rust ile yazılmış `hil` aracıyla deklaratif patch ve overlay dosyaları uygular. Bu sayede Firefox'un en son güvenlik yamalarını ve performans güncellemelerini gecikmeksizin alır.",
+          },
+          {
+            q: "Mevcut Firefox eklentilerimi ve şifrelerimi kullanabilir miyim?",
+            a: "Evet. Hilal standart Firefox Add-ons mağazası (AMO) ve Gecko eklenti ekosistemiyle %100 uyumludur. uBlock Origin varsayılan olarak dahildir; Bitwarden, Dark Reader ve sevdiğiniz tüm eklentileri tek tıkla yükleyebilirsiniz.",
+          },
+          {
+            q: "Çalışma Alanları (Workspaces) oturumları nasıl ayırır?",
+            a: "Her çalışma alanı Firefox Multi-Account Containers altyapısını kullanarak çerezleri ve oturumları izole eder. İş, okul ve kişisel hesaplarınıza aynı tarayıcı penceresinde birbirine karışmadan giriş yapabilirsiniz.",
+          },
+          {
+            q: "Verilerim güvende mi? Telemetri toplanıyor mu?",
+            a: "Sıfır telemetri politikası uygulanır. Mozilla'nın tüm analitik, telemetri ve hata raporlama sunucuları patch seviyesinde engellenmiştir. Hiçbir veriniz asla kaydedilmez ve dışarıya aktarılmaz.",
+          },
+        ],
+      },
+      footer: {
+        copyright: "Hilal Browser Projesi. Mozilla Kamu Lisansı (MPL 2.0) ile korunmaktadır.",
+        source: "Kaynak Kodu",
+        releases: "Sürümler",
+        discord: "Discord",
+      },
+    },
+    en: {
+      nav: {
+        features: "Features",
+        download: "Download",
+        github: "GitHub",
+        getHilal: "Get Hilal",
+      },
+      hero: {
+        tagline: "The web, on your terms.",
+        subtitle:
+          "An uncompromised, surveillance-free desktop browser built on Firefox Gecko. Featuring translucent Tahoe sidebars, isolated multi-account workspaces, and built-in tracking protection.",
+        downloadBtn: {
+          macos: "Download for macOS",
+          windows: "Download for Windows",
+          linux: "Download for Linux",
+          other: "Download Alpha Build",
+        },
+        viewAllDownloads: "All platforms (.dmg, .exe, .deb, .zip)",
+      },
+      stories: [
+        {
+          tag: "01 / TAHOE INTERFACE",
+          title: "A translucent Tahoe sidebar that gets out of your way.",
+          description:
+            "Tabs on the left, your focus on the center. A clean window that softly adapts to the website's color palette, paired with an auto-hiding compact toolbar.",
+          image: isDark ? "/welcome-compact-vertical.png" : "/welcome-standard-vertical.png",
+          alt: "Hilal Tahoe Sidebar Interface",
+        },
+        {
+          tag: "02 / WORKSPACES",
+          title: "Work, dev, and personal life. Strictly partitioned.",
+          description:
+            "Tabs aren't just visually grouped; each workspace runs in a true container context with isolated cookies and logins. No need to juggle dozens of separate windows.",
+          image: "/welcome-workspaces-on.png",
+          alt: "Hilal Multi-Account Workspaces",
+        },
+        {
+          tag: "03 / PRIVACY & CONTROL",
+          title: "Zero surveillance. Built-in shield & Element Zapper.",
+          description:
+            "Pre-packaged with uBlock Origin to neutralize intrusive ads and trackers. Zero telemetry. Vaporize annoying banners with a single click using the Element Zapper.",
+          image: "/welcome-toolbar-hidden.png",
+          alt: "Hilal Compact Focused Mode",
+        },
+      ],
+      openSourceSection: {
+        tag: "04 / ARCHITECTURE",
+        title: "An open source layer. The Gecko engine you trust.",
+        description:
+          "Hilal runs on top of upstream Firefox Gecko as an auditable, text-only patch layer. Retaining instant security tracking and 100% Firefox add-on compatibility.",
+        commandLabel: "Developer one-line setup:",
+      },
+      downloadSection: {
+        title: "Meet Hilal.",
+        subtitle: "Uncompromised, fast, and tranquil browsing.",
+        platforms: [
+          {
+            name: "macOS",
+            spec: "Apple Silicon & Intel • Universal .dmg",
+            icon: <Apple className="w-6 h-6" />,
+          },
+          {
+            name: "Windows",
+            spec: "Windows 10/11 • 64-bit .exe & Portable .zip",
+            icon: <Laptop className="w-6 h-6" />,
+          },
+          {
+            name: "Linux",
+            spec: "Ubuntu / Debian .deb • AppImage • Tarball",
+            icon: <Terminal className="w-6 h-6" />,
+          },
+        ],
+        directDownload: "Download",
+      },
+      faq: {
+        title: "Frequently Asked Questions",
+        items: [
+          {
+            q: "What is Hilal Browser and how does it differ from a hard fork?",
+            a: "Hilal is not a detached codebase copy. It applies declarative patch files onto upstream Firefox via the native `hil` Rust patch manager. This guarantees instant security tracking and zero fork rot.",
+          },
+          {
+            q: "Can I use standard Firefox extensions?",
+            a: "Yes. Hilal maintains full compatibility with the Firefox Add-ons ecosystem (AMO) and Gecko engine. uBlock Origin is pre-installed out of the box.",
+          },
+          {
+            q: "How do Workspaces isolate sessions?",
+            a: "Each workspace uses Firefox Multi-Account Containers to strictly partition cookies, logins, and storage between different contexts.",
+          },
+          {
+            q: "Is there any telemetry or tracking?",
+            a: "Zero telemetry. Mozilla telemetry endpoints and background analytics pingers are killed at the engine and preference level.",
+          },
+        ],
+      },
+      footer: {
+        copyright: "Hilal Browser Project. Licensed under the Mozilla Public License 2.0.",
+        source: "Source Code",
+        releases: "Releases",
+        discord: "Discord",
+      },
+    },
   };
 
-  const getReleaseSummaryLines = (body: string) => {
-    return parseChangelogToSimpleLines(body)
-      .filter(line => line.type === "item" || line.type === "text")
-      .slice(0, 3);
-  };
+  const activeT = t[lang] || t.tr;
 
-  const getDynamicDownloadBtnText = () => {
-    if (lang === "tr") {
-      switch (detectedOS) {
-        case "windows": return "Windows İndir";
-        case "macos": return "macOS İndir";
-        case "linux": return "Linux İndir";
-        default: return "Alpha İndir";
-      }
-    } else {
-      switch (detectedOS) {
-        case "windows": return "Download for Windows";
-        case "macos": return "Download for macOS";
-        case "linux": return "Download for Linux";
-        default: return "Download Alpha";
-      }
-    }
+  const getDynamicBtnLabel = () => {
+    if (detectedOS === "macos") return activeT.hero.downloadBtn.macos;
+    if (detectedOS === "windows") return activeT.hero.downloadBtn.windows;
+    if (detectedOS === "linux") return activeT.hero.downloadBtn.linux;
+    return activeT.hero.downloadBtn.other;
   };
 
   return (
     <div
-      className={`min-h-screen font-sans antialiased selection:bg-neutral-850 selection:text-white transition-colors duration-500 ${
-        theme === "dark" ? "bg-[#050505] text-[#D4D4D4]" : "bg-[#FAF9F6] text-[#262626]"
+      className={`min-h-screen font-sans transition-colors duration-300 ${
+        isDark ? "bg-[#08080a] text-[#f4f4f6]" : "bg-[#faf9f7] text-[#18181b]"
       }`}
-      id="root-container"
     >
-      {/* 1. Floating Capsule Navigation Bar */}
-      <div className="fixed top-4 left-0 right-0 z-50 w-full px-4 pointer-events-none">
-        <nav
-          className={`mx-auto flex pointer-events-auto items-center justify-between transition-all duration-500 ease-out border ${
-            scrolled
-              ? "max-w-3xl px-5 py-2 rounded-full border-neutral-200/60 bg-white/90 dark:border-neutral-850/60 dark:bg-neutral-950/90 shadow-lg shadow-black/5 dark:shadow-none"
-              : "max-w-5xl px-6 py-2.5 rounded-full border-neutral-200/40 bg-white/75 dark:border-neutral-800/40 dark:bg-neutral-950/75 shadow-md shadow-neutral-250/5 dark:shadow-none"
-          }`}
-          id="navbar-sticky"
-        >
-          <div
-            className="flex items-center gap-3 cursor-pointer group"
-            onClick={() => {
-              setView("home");
-              window.scrollTo({ top: 0, behavior: "smooth" });
-            }}
-            id="brand-logo-container"
+      {/* 1. Calm Minimal Navbar */}
+      <nav
+        className={`fixed top-0 left-0 right-0 z-50 border-b transition-colors ${
+          isDark ? "nav-blur-dark border-white/[0.06]" : "nav-blur-light border-black/[0.06]"
+        }`}
+      >
+        <div className="mx-auto max-w-5xl px-6 h-16 flex items-center justify-between">
+          {/* Logo & Name */}
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            className="flex items-center gap-2.5 cursor-pointer"
           >
             <img
               src="/default128.png"
-              alt="Hilal Browser Logo"
-              className="h-6 w-6 opacity-90 group-hover:opacity-100 transition-opacity"
-              referrerPolicy="no-referrer"
+              alt="Hilal Logo"
+              className="w-6 h-6 object-contain"
             />
-            <span className="font-sans text-[10.5px] font-semibold tracking-[0.2em] uppercase text-neutral-900 dark:text-neutral-100">
-              hilal <span className="text-neutral-450 dark:text-neutral-500 font-light">browser</span>
+            <span className={`text-sm font-bold tracking-tight ${isDark ? "text-white" : "text-black"}`}>
+              Hilal
             </span>
-          </div>
+          </motion.div>
 
-          {/* Nav Center Links */}
-          <div className="hidden md:flex items-center gap-1.5 text-[9.5px] font-bold tracking-wider uppercase">
-            {[
-              { label: activeT.nav.features, id: "ozellikler" },
-              { label: activeT.nav.interface, id: "arayuz" },
-              { label: activeT.nav.releases, id: "surumler" },
-              { label: activeT.nav.vision, id: "vizyon" }
-            ].map((item) => (
-              <button
-                key={item.id}
-                id={`nav-link-${item.id}`}
-                onClick={() => {
-                  if (item.id === "surumler") {
-                    setView("releases");
-                    window.scrollTo({ top: 0, behavior: "smooth" });
-                  } else {
-                    setView("home");
-                    setTimeout(() => scrollToId(item.id), 50);
-                  }
-                }}
-                className={`relative px-3.5 py-1.5 rounded-full transition-colors duration-300 hover:text-neutral-955 dark:hover:text-white ${
-                  activeSection === item.id
-                    ? "text-neutral-955 dark:text-white"
-                    : "text-neutral-400 dark:text-neutral-500"
-                }`}
-              >
-                <span className="relative z-10">{item.label}</span>
-                {activeSection === item.id && (
-                  <motion.div
-                    layoutId="activeIndicator"
-                    className="absolute inset-0 rounded-full bg-neutral-100/80 dark:bg-neutral-900/80 border border-neutral-200/20 dark:border-neutral-800/30"
-                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                  />
-                )}
-              </button>
-            ))}
-          </div>
-
-          {/* Right utilities */}
-          <div className="flex items-center gap-2.5">
-            {/* Language Selector */}
+          {/* Center Links */}
+          <div
+            className={`hidden sm:flex items-center gap-8 text-xs font-medium ${
+              isDark ? "text-neutral-400" : "text-neutral-600"
+            }`}
+          >
             <button
-              id="language-switcher"
-              onClick={() => setLang(prev => (prev === "tr" ? "en" : "tr"))}
-              className="w-8 h-8 flex items-center justify-center text-[9.5px] font-mono font-bold tracking-wider rounded-full border border-neutral-200/60 hover:bg-neutral-100 text-neutral-600 dark:border-neutral-800/60 dark:hover:bg-neutral-900 dark:text-neutral-400 transition-all select-none"
-              title={lang === "tr" ? "Switch to English" : "Türkçe"}
+              onClick={() => scrollToId("features")}
+              className={`hover:text-blue-500 transition-colors ${isDark ? "hover:text-white" : "hover:text-black"}`}
+            >
+              {activeT.nav.features}
+            </button>
+            <button
+              onClick={() => scrollToId("download")}
+              className={`hover:text-blue-500 transition-colors ${isDark ? "hover:text-white" : "hover:text-black"}`}
+            >
+              {activeT.nav.download}
+            </button>
+            <a
+              href="https://github.com/VastSea0/hilal-browser"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`hover:text-blue-500 transition-colors ${isDark ? "hover:text-white" : "hover:text-black"}`}
+            >
+              {activeT.nav.github}
+            </a>
+          </div>
+
+          {/* Right Utilities */}
+          <div className="flex items-center gap-3">
+            {/* Lang Switch */}
+            <button
+              onClick={() => setLang(lang === "tr" ? "en" : "tr")}
+              className={`text-xs font-mono font-semibold px-2 py-1 rounded-md transition-colors ${
+                isDark
+                  ? "text-neutral-400 hover:text-white hover:bg-white/10"
+                  : "text-neutral-600 hover:text-black hover:bg-black/5"
+              }`}
+              title={lang === "tr" ? "Switch to English" : "Türkçe'ye Geç"}
             >
               {lang === "tr" ? "EN" : "TR"}
             </button>
 
-            {/* Theme Switcher */}
+            {/* Theme Switch */}
             <button
-              id="theme-toggler"
               onClick={toggleTheme}
-              className="w-8 h-8 flex items-center justify-center rounded-full border border-neutral-200/60 hover:bg-neutral-100 text-neutral-600 dark:border-neutral-800/60 dark:hover:bg-neutral-900 dark:text-neutral-400 transition-all"
-              aria-label="Theme switcher"
+              className={`p-1.5 rounded-md transition-colors ${
+                isDark
+                  ? "text-neutral-400 hover:text-white hover:bg-white/10"
+                  : "text-neutral-600 hover:text-black hover:bg-black/5"
+              }`}
+              aria-label="Theme Toggle"
             >
-              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
 
-            {/* Discord Link */}
+            {/* CTA Button */}
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => setIsDownloadOpen(true)}
+              className={`text-xs font-semibold px-4 py-2 rounded-full transition-all shadow-sm ${
+                isDark
+                  ? "bg-white text-black hover:bg-neutral-100"
+                  : "bg-[#18181b] text-white hover:bg-black"
+              }`}
+            >
+              {activeT.nav.getHilal}
+            </motion.button>
+          </div>
+        </div>
+      </nav>
+
+      {/* 2. Serene Hero Section */}
+      <section className="pt-36 sm:pt-48 pb-20 px-6 max-w-5xl mx-auto text-center">
+        <motion.div
+          variants={staggerContainer}
+          initial="hidden"
+          animate="visible"
+          className="space-y-6"
+        >
+          {/* Main Tagline */}
+          <motion.h1
+            variants={fadeIn}
+            className={`text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight leading-[1.08] ${
+              isDark ? "text-white" : "text-[#111113]"
+            }`}
+          >
+            {activeT.hero.tagline}
+          </motion.h1>
+
+          {/* Subtitle */}
+          <motion.p
+            variants={fadeIn}
+            className={`max-w-2xl mx-auto text-sm sm:text-base md:text-lg leading-relaxed font-normal ${
+              isDark ? "text-neutral-400" : "text-neutral-600"
+            }`}
+          >
+            {activeT.hero.subtitle}
+          </motion.p>
+
+          {/* Hero Download CTA */}
+          <motion.div
+            variants={fadeIn}
+            className="pt-4 flex flex-col items-center gap-3"
+          >
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => setIsDownloadOpen(true)}
+              className="inline-flex items-center gap-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm sm:text-base px-8 py-3.5 rounded-full shadow-lg shadow-blue-600/25 transition-all"
+            >
+              {detectedOS === "macos" && <Apple className="w-5 h-5" />}
+              {detectedOS === "windows" && <Laptop className="w-5 h-5" />}
+              {detectedOS !== "macos" && detectedOS !== "windows" && <Download className="w-5 h-5" />}
+              <span>{getDynamicBtnLabel()}</span>
+            </motion.button>
+
+            <button
+              onClick={() => setIsDownloadOpen(true)}
+              className={`text-xs transition-colors mt-1 font-medium ${
+                isDark ? "text-neutral-500 hover:text-neutral-300" : "text-neutral-500 hover:text-neutral-800"
+              }`}
+            >
+              {activeT.hero.viewAllDownloads}
+            </button>
+          </motion.div>
+        </motion.div>
+
+        {/* Main Hero Product Image Showcase */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+          className={`mt-16 sm:mt-20 rounded-2xl overflow-hidden hover-lift ${
+            isDark ? "browser-frame-dark bg-[#0e0e12]" : "browser-frame-light bg-[#ffffff]"
+          }`}
+        >
+          <img
+            src={isDark ? "/welcome-home-preview-black.png" : "/welcome-home-preview.png"}
+            alt="Hilal Browser Tahoe Interface"
+            className="w-full h-auto block select-none pointer-events-none"
+          />
+        </motion.div>
+      </section>
+
+      {/* 3. Calm Editorial Stories (One by one, generous breathing room) */}
+      <section className="py-24 space-y-36 max-w-5xl mx-auto px-6" id="features">
+        {activeT.stories.map((story, index) => (
+          <motion.div
+            key={index}
+            initial={{ opacity: 0, y: 28 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-80px" }}
+            transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+            className="grid grid-cols-1 lg:grid-cols-12 gap-10 sm:gap-16 items-center"
+          >
+            {/* Text side */}
+            <div
+              className={`lg:col-span-5 space-y-4 ${
+                index % 2 === 1 ? "lg:order-2" : "lg:order-1"
+              }`}
+            >
+              <span className="text-[11px] font-mono tracking-widest text-blue-500 uppercase font-semibold block">
+                {story.tag}
+              </span>
+              <h2
+                className={`text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight leading-snug ${
+                  isDark ? "text-white" : "text-[#111113]"
+                }`}
+              >
+                {story.title}
+              </h2>
+              <p
+                className={`text-sm sm:text-base leading-relaxed ${
+                  isDark ? "text-neutral-400" : "text-neutral-600"
+                }`}
+              >
+                {story.description}
+              </p>
+            </div>
+
+            {/* Image side */}
+            <motion.div
+              whileHover={{ y: -4 }}
+              transition={{ duration: 0.3 }}
+              className={`lg:col-span-7 rounded-2xl overflow-hidden hover-lift ${
+                isDark
+                  ? "browser-frame-dark bg-[#0e0e12]"
+                  : "browser-frame-light bg-[#ffffff]"
+              } ${index % 2 === 1 ? "lg:order-1" : "lg:order-2"}`}
+            >
+              <img
+                src={story.image}
+                alt={story.alt}
+                className="w-full h-auto block select-none"
+              />
+            </motion.div>
+          </motion.div>
+        ))}
+
+        {/* Open Source / Architecture Moment */}
+        <motion.div
+          initial={{ opacity: 0, y: 28 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-80px" }}
+          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+          className={`pt-16 border-t text-center max-w-3xl mx-auto space-y-6 ${
+            isDark ? "border-white/[0.06]" : "border-black/[0.06]"
+          }`}
+        >
+          <span className="text-[11px] font-mono tracking-widest text-blue-500 uppercase font-semibold block">
+            {activeT.openSourceSection.tag}
+          </span>
+          <h2
+            className={`text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight ${
+              isDark ? "text-white" : "text-[#111113]"
+            }`}
+          >
+            {activeT.openSourceSection.title}
+          </h2>
+          <p
+            className={`text-sm sm:text-base leading-relaxed ${
+              isDark ? "text-neutral-400" : "text-neutral-600"
+            }`}
+          >
+            {activeT.openSourceSection.description}
+          </p>
+
+          {/* Quick Terminal Snippet */}
+          <div
+            className={`mt-8 inline-flex items-center gap-3 px-4 py-2.5 rounded-xl border text-xs font-mono transition-colors ${
+              isDark
+                ? "border-white/[0.08] bg-[#111114] text-neutral-300"
+                : "border-black/[0.08] bg-[#ffffff] text-neutral-800 shadow-sm"
+            }`}
+          >
+            <span className="text-blue-500 font-bold">$</span>
+            <span className="select-all">git clone https://github.com/VastSea0/hilal-browser.git && cd hilal-browser && ./bin/hil setup</span>
+            <button
+              onClick={handleCopyCommand}
+              className={`p-1 rounded transition-colors ${
+                isDark ? "text-neutral-400 hover:text-white" : "text-neutral-500 hover:text-black"
+              }`}
+              title="Copy"
+            >
+              {copiedClone ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+            </button>
+          </div>
+        </motion.div>
+      </section>
+
+      {/* 4. Minimal Download Section */}
+      <section
+        className={`py-24 border-t transition-colors ${
+          isDark ? "border-white/[0.06] bg-[#0c0c0f]" : "border-black/[0.06] bg-[#f4f3f0]"
+        }`}
+        id="download"
+      >
+        <div className="max-w-4xl mx-auto px-6 text-center">
+          <h2
+            className={`text-3xl sm:text-4xl font-bold tracking-tight ${
+              isDark ? "text-white" : "text-[#111113]"
+            }`}
+          >
+            {activeT.downloadSection.title}
+          </h2>
+          <p
+            className={`mt-2 text-sm ${
+              isDark ? "text-neutral-400" : "text-neutral-600"
+            }`}
+          >
+            {activeT.downloadSection.subtitle}
+          </p>
+
+          {/* 3 Calm Platform Cards */}
+          <div className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-5">
+            {activeT.downloadSection.platforms.map((p, idx) => (
+              <motion.div
+                key={idx}
+                whileHover={{ y: -4 }}
+                onClick={() => setIsDownloadOpen(true)}
+                className={`p-6 rounded-2xl border transition-all text-left flex flex-col justify-between cursor-pointer group shadow-sm ${
+                  isDark
+                    ? "border-white/[0.08] bg-[#111114] hover:border-white/[0.18] hover:bg-[#15151a]"
+                    : "border-black/[0.08] bg-[#ffffff] hover:border-black/[0.18] hover:bg-[#ffffff]"
+                }`}
+              >
+                <div>
+                  <div
+                    className={`transition-colors mb-4 ${
+                      isDark ? "text-neutral-400 group-hover:text-blue-400" : "text-neutral-600 group-hover:text-blue-600"
+                    }`}
+                  >
+                    {p.icon}
+                  </div>
+                  <h3
+                    className={`text-base font-bold ${
+                      isDark ? "text-white" : "text-[#111113]"
+                    }`}
+                  >
+                    {p.name}
+                  </h3>
+                  <p
+                    className={`mt-1 text-xs ${
+                      isDark ? "text-neutral-400" : "text-neutral-500"
+                    }`}
+                  >
+                    {p.spec}
+                  </p>
+                </div>
+
+                <div className="mt-6 flex items-center gap-1.5 text-xs text-blue-500 font-semibold group-hover:translate-x-1 transition-transform">
+                  <span>{activeT.downloadSection.directDownload}</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 5. Minimal S.S.S. (FAQ) */}
+      <section
+        className={`py-24 border-t max-w-3xl mx-auto px-6 ${
+          isDark ? "border-white/[0.06]" : "border-black/[0.06]"
+        }`}
+      >
+        <h2
+          className={`text-2xl sm:text-3xl font-bold tracking-tight text-center mb-12 ${
+            isDark ? "text-white" : "text-[#111113]"
+          }`}
+        >
+          {activeT.faq.title}
+        </h2>
+
+        <div className="space-y-4">
+          {activeT.faq.items.map((item, idx) => {
+            const isOpen = activeFaq === idx;
+            return (
+              <div
+                key={idx}
+                className={`border-b pb-4 transition-colors ${
+                  isDark ? "border-white/[0.06]" : "border-black/[0.06]"
+                }`}
+              >
+                <button
+                  onClick={() => setActiveFaq(isOpen ? null : idx)}
+                  className={`w-full flex items-center justify-between text-left py-2 text-sm sm:text-base font-semibold transition-colors ${
+                    isDark ? "text-white hover:text-blue-400" : "text-[#18181b] hover:text-blue-600"
+                  }`}
+                >
+                  <span>{item.q}</span>
+                  <ChevronDown
+                    className={`w-4 h-4 transition-transform duration-200 shrink-0 ml-4 ${
+                      isOpen ? "rotate-180" : ""
+                    } ${isDark ? "text-neutral-400" : "text-neutral-500"}`}
+                  />
+                </button>
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      <p
+                        className={`pt-2 text-xs sm:text-sm leading-relaxed ${
+                          isDark ? "text-neutral-400" : "text-neutral-600"
+                        }`}
+                      >
+                        {item.a}
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* 6. Tranquil Single-line Footer */}
+      <footer
+        className={`py-12 border-t text-xs transition-colors ${
+          isDark ? "border-white/[0.06] text-neutral-500" : "border-black/[0.06] text-neutral-500"
+        }`}
+      >
+        <div className="max-w-5xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p>© {new Date().getFullYear()} {activeT.footer.copyright}</p>
+          <div className="flex items-center gap-6 font-medium">
+            <a
+              href="https://github.com/VastSea0/hilal-browser"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`transition-colors ${isDark ? "hover:text-white" : "hover:text-black"}`}
+            >
+              {activeT.footer.source}
+            </a>
+            <a
+              href="https://github.com/VastSea0/hilal-browser/releases"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`transition-colors ${isDark ? "hover:text-white" : "hover:text-black"}`}
+            >
+              {activeT.footer.releases}
+            </a>
             <a
               href="https://discord.gg/JZJ4tmPHFw"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-8 h-8 flex items-center justify-center rounded-full border border-neutral-200/60 hover:bg-neutral-100 text-neutral-600 dark:border-neutral-800/60 dark:hover:bg-neutral-900 dark:text-neutral-400 transition-all"
-              aria-label="Discord Server"
+              className={`transition-colors ${isDark ? "hover:text-white" : "hover:text-black"}`}
             >
-              <span className="flex h-4 w-4 items-center justify-center">
-                <SiDiscord size={16} />
-              </span>
+              {activeT.footer.discord}
             </a>
-
-            {/* Minimalist Install CTA */}
-            <button
-              id="nav-download-button"
-              onClick={() => setIsDownloadOpen(true)}
-              className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-neutral-950 px-4.5 py-2 text-[9.5px] font-bold tracking-widest uppercase text-white hover:opacity-90 dark:bg-white dark:text-neutral-950 transition-opacity"
-            >
-              <Download className="h-3 w-3" />
-              {activeT.footer.install}
-            </button>
-          </div>
-        </nav>
-      </div>
-
-      {/* Main Container Switcher */}
-      <AnimatePresence mode="wait">
-        {view === "home" ? (
-          // Landing Page View
-          <motion.div
-            key="home-page"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <section className="relative w-full bg-gradient-to-br from-cobalt to-cobalt-dark text-white noise-bg pt-28 pb-24 md:pt-36 md:pb-32 overflow-hidden" id="hero">
-              <div className="absolute top-1/4 left-1/10 w-72 h-72 rounded-full bg-sky-400/20 blur-3xl pointer-events-none animate-float-slow z-0" />
-              <div className="absolute bottom-1/4 right-1/10 w-96 h-96 rounded-full bg-indigo-500/15 blur-3xl pointer-events-none animate-float-slower z-0" />
-
-              <motion.div
-                key={lang}
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-                className="mx-auto max-w-4xl px-6 relative z-10 text-center"
-              >
-                <motion.div
-                  variants={itemVariants}
-                  className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 backdrop-blur-md px-3.5 py-1 text-[9px] font-bold tracking-widest uppercase text-white/80"
-                >
-                  <span className="h-1.5 w-1.5 rounded-full bg-white/60" />
-                  {activeT.hero.alphaBadge}
-                </motion.div>
-
-                <motion.h1
-                  variants={itemVariants}
-                  className="mt-6 font-sans text-3xl font-extrabold tracking-tight sm:text-4xl md:text-5xl lg:text-6.5xl leading-[1.12] text-white tracking-tighter"
-                  style={{ letterSpacing: "-0.025em" }}
-                >
-                  {lang === "tr" ? (
-                    <>
-                      Firefox'u{" "}
-                      <span className="font-serif italic font-light text-sky-200">
-                        Hilal
-                      </span>{" "}
-                      patch ve{" "}
-                      <span className="font-serif italic font-light text-sky-200">
-                        overlay
-                      </span>{" "}
-                      <div className="mt-1 font-serif italic font-light">katmanıyla kullanın.</div>
-                    </>
-                  ) : (
-                    <>
-                      {activeT.hero.title1}{" "}
-                      <span className="font-serif italic font-light text-sky-200">
-                        {activeT.hero.title2}
-                      </span>{" "}
-                      {activeT.hero.title3}{" "}
-                      <span className="font-serif italic font-light text-sky-200">
-                        {activeT.hero.title4}
-                      </span>{" "}
-                      <div className="mt-1 font-serif italic font-light">
-                        {activeT.hero.title5}
-                      </div>
-                    </>
-                  )}
-                </motion.h1>
-
-                <motion.p
-                  variants={itemVariants}
-                  className="mx-auto mt-6 max-w-xl text-xs md:text-[13px] leading-relaxed text-white/70"
-                >
-                  {activeT.hero.desc}
-                </motion.p>
-
-                <motion.div
-                  variants={itemVariants}
-                  className="mt-8 flex flex-col items-center justify-center"
-                  id="hero-cta-outer-container"
-                >
-                  <div className="flex flex-wrap items-center justify-center gap-3">
-                    <button
-                      id="hero-download-btn"
-                      onClick={() => setIsDownloadOpen(true)}
-                      className="inline-flex items-center gap-2 rounded-full bg-white px-7 py-3.5 text-[9.5px] font-bold tracking-widest uppercase text-cobalt hover:bg-neutral-50 active:scale-98 hover:scale-[1.02] transition-all shadow-lg shadow-black/10"
-                    >
-                      <Download className="h-3.5 w-3.5" />
-                      {getDynamicDownloadBtnText()}
-                    </button>
-                    <a
-                      href="https://github.com/VastSea0/hilal-browser"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      id="hero-github-btn"
-                      className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 hover:bg-white/10 px-7 py-3.5 text-[9.5px] font-bold tracking-widest uppercase text-white active:scale-98 hover:scale-[1.02] transition-all"
-                    >
-                      <Github className="h-3.5 w-3.5" />
-                      {activeT.hero.sourceBtn}
-                    </a>
-                  </div>
-
-                  {recommendedAsset && (
-                    <p className="mt-4 text-[9px] font-mono text-white/55" id="hero-detected-os-subtitle">
-                      {lang === "tr" ? "Sisteminiz için belirlenen paket:" : "Identified for your system:"}{" "}
-                      <span className="font-semibold text-white/80">{recommendedAsset.name}</span>{" "}
-                      ({formatBytes(recommendedAsset.size)})
-                    </p>
-                  )}
-                </motion.div>
-              </motion.div>
-
-              <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-none z-10 pointer-events-none">
-                <svg viewBox="0 0 1440 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-6 block text-[#FAF9F6] dark:text-[#050505]">
-                  <path d="M0,0 Q60,20 120,0 Q180,20 240,0 Q300,20 360,0 Q420,20 480,0 Q540,20 600,0 Q660,20 720,0 Q780,20 840,0 Q900,20 960,0 Q1020,20 1080,0 Q1140,20 1200,0 Q1260,20 1320,0 Q1380,20 1440,0 L1440,24 L0,24 Z" fill="currentColor" />
-                </svg>
-              </div>
-            </section>
-
-            <section className="mx-auto max-w-5xl px-6 py-12 md:py-16" id="arayuz">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-80px" }}
-                transition={{ duration: 0.7, ease: "easeOut" }}
-                className="relative"
-              >
-                <div
-                  id="browser-preview-container"
-                  ref={sliderRef}
-                  className="relative select-none overflow-hidden rounded-2xl border border-neutral-200/40 dark:border-neutral-800/40 shadow-[0_25px_60px_rgba(0,0,0,0.06)] dark:shadow-[0_25px_60px_rgba(0,0,0,0.45)] cursor-ew-resize bg-neutral-100 dark:bg-neutral-900"
-                  onMouseDown={handleSliderMouseDown}
-                  onTouchStart={handleSliderTouchStart}
-                >
-                  <img
-                    src="/welcome-home-preview-black.png"
-                    alt="Dark Preview"
-                    className="w-full h-auto select-none pointer-events-none block"
-                    referrerPolicy="no-referrer"
-                  />
-
-                  <div
-                    className="absolute inset-0 pointer-events-none overflow-hidden z-10"
-                    style={{
-                      clipPath: `polygon(0 0, ${sliderPosition}% 0, ${sliderPosition}% 100%, 0 100%)`,
-                    }}
-                  >
-                    <img
-                      src="/welcome-home-preview.png"
-                      alt="Light Preview"
-                      className="w-full h-auto select-none pointer-events-none block"
-                      referrerPolicy="no-referrer"
-                    />
-                  </div>
-
-                  <div
-                    className="absolute top-0 bottom-0 w-[1px] bg-neutral-300 dark:bg-neutral-700 z-20 pointer-events-none"
-                    style={{ left: `${sliderPosition}%` }}
-                  />
-
-                  <div
-                    className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 z-30 shadow-md flex items-center justify-center cursor-ew-resize text-neutral-400 select-none"
-                    style={{ left: `${sliderPosition}%` }}
-                  >
-                    <span className="text-[10px] font-bold tracking-tighter">&lt;&gt;</span>
-                  </div>
-
-                  <div className="absolute bottom-3 left-3 z-25 px-2.5 py-0.5 text-[9px] font-mono font-semibold tracking-wider rounded bg-white/95 text-neutral-900 dark:bg-neutral-900/95 dark:text-neutral-100 select-none uppercase shadow-sm">
-                    {lang === "tr" ? "Aydınlık" : "Light"}
-                  </div>
-                  <div className="absolute bottom-3 right-3 z-25 px-2.5 py-0.5 text-[9px] font-mono font-semibold tracking-wider rounded bg-white/95 text-neutral-900 dark:bg-neutral-900/95 dark:text-neutral-100 select-none uppercase shadow-sm">
-                    {lang === "tr" ? "Karanlık" : "Dark"}
-                  </div>
-                </div>
-
-                <div className="mt-3 flex justify-between items-center px-1">
-                  <span className="font-mono text-[9px] tracking-widest text-neutral-400 dark:text-neutral-500 uppercase">
-                    {activeT.preview.title}
-                  </span>
-                  <span className="hidden sm:inline-block font-sans text-[10px] text-neutral-400 dark:text-neutral-500 font-medium italic">
-                    {activeT.preview.sub}
-                  </span>
-                </div>
-              </motion.div>
-            </section>
-
-            <section className="relative w-full pb-24 pt-12 text-center" id="ozellikler">
-              <div className="mx-auto max-w-5xl px-6">
-                <div className="text-center mb-16">
-                  <span className="text-[9px] font-bold tracking-[0.2em] text-neutral-400 dark:text-neutral-500 uppercase block">
-                    {activeT.features.tag}
-                  </span>
-                  <h2 className="mt-2 font-serif text-2xl font-medium tracking-tight sm:text-3xl text-neutral-900 dark:text-white">
-                    {activeT.features.title}
-                  </h2>
-                  <p className="mx-auto mt-2 max-w-md text-xs leading-relaxed text-neutral-400 dark:text-neutral-500">
-                    {activeT.features.desc}
-                  </p>
-                </div>
-
-                <motion.div
-                  variants={cardContainerVariants}
-                  initial="hidden"
-                  whileInView="visible"
-                  viewport={{ once: true, margin: "-100px" }}
-                  className="grid grid-cols-1 md:grid-cols-3 gap-6"
-                  id="features-highlights-grid"
-                >
-                  <motion.div
-                    variants={cardVariants}
-                    whileHover={{ y: -6, transition: { duration: 0.2 } }}
-                    className="p-6 md:p-8 flex flex-col justify-between text-left rounded-2xl border border-neutral-200/40 bg-[#FAF9F6] hover:bg-white dark:border-neutral-800/40 dark:bg-neutral-900/10 dark:hover:bg-neutral-900/20 shadow-[0_4px_20px_rgba(0,0,0,0.01)] hover:shadow-[0_12px_35px_rgba(0,0,0,0.04)] dark:shadow-none transition-all duration-300"
-                  >
-                    <div>
-                      <div className="w-8 h-8 rounded-full bg-neutral-200/50 dark:bg-neutral-800/50 text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 flex items-center justify-center mb-5 select-none">
-                        01
-                      </div>
-                      <h3 className="font-sans text-xs font-bold tracking-wider uppercase text-neutral-900 dark:text-neutral-100">
-                        {activeT.features.card1Title}
-                      </h3>
-                      <div className="text-[10px] text-cobalt dark:text-sky-400 font-medium mt-1.5 font-sans italic">
-                        {lang === "tr" ? "Upstream Firefox kaynağı, Hilal patch sırası." : "Upstream Firefox source, Hilal patch order."}
-                      </div>
-                      <p className="mt-3.5 text-xs leading-relaxed text-neutral-500 dark:text-neutral-400">
-                        {activeT.features.card1Desc}
-                      </p>
-                    </div>
-                    <span className="mt-6 self-start inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-neutral-200/50 bg-neutral-100/50 dark:border-neutral-800/50 dark:bg-neutral-900/50 text-[9px] font-mono font-bold tracking-widest uppercase text-neutral-400 dark:text-neutral-500 select-none">
-                      {activeT.features.card1Foot}
-                    </span>
-                  </motion.div>
-
-                  <motion.div
-                    variants={cardVariants}
-                    whileHover={{ y: -6, transition: { duration: 0.2 } }}
-                    className="p-6 md:p-8 flex flex-col justify-between text-left rounded-2xl border border-neutral-200/40 bg-[#FAF9F6] hover:bg-white dark:border-neutral-800/40 dark:bg-neutral-900/10 dark:hover:bg-neutral-900/20 shadow-[0_4px_20px_rgba(0,0,0,0.01)] hover:shadow-[0_12px_35px_rgba(0,0,0,0.04)] dark:shadow-none transition-all duration-300"
-                  >
-                    <div>
-                      <div className="w-8 h-8 rounded-full bg-neutral-200/50 dark:bg-neutral-800/50 text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 flex items-center justify-center mb-5 select-none">
-                        02
-                      </div>
-                      <h3 className="font-sans text-xs font-bold tracking-wider uppercase text-neutral-900 dark:text-neutral-100">
-                        {activeT.features.card2Title}
-                      </h3>
-                      <div className="text-[10px] text-cobalt dark:text-sky-400 font-medium mt-1.5 font-sans italic">
-                        {lang === "tr" ? "Varsayılan profile eklenen XPI." : "XPI installed for the default profile."}
-                      </div>
-                      <p className="mt-3.5 text-xs leading-relaxed text-neutral-500 dark:text-neutral-400">
-                        {activeT.features.card2Desc}
-                      </p>
-                    </div>
-                    <span className="mt-6 self-start inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-neutral-200/50 bg-neutral-100/50 dark:border-neutral-800/50 dark:bg-neutral-900/50 text-[9px] font-mono font-bold tracking-widest uppercase text-neutral-400 dark:text-neutral-500 select-none">
-                      {activeT.features.card2Foot}
-                    </span>
-                  </motion.div>
-
-                  <motion.div
-                    variants={cardVariants}
-                    whileHover={{ y: -6, transition: { duration: 0.2 } }}
-                    className="p-6 md:p-8 flex flex-col justify-between text-left rounded-2xl border border-neutral-200/40 bg-[#FAF9F6] hover:bg-white dark:border-neutral-800/40 dark:bg-neutral-900/10 dark:hover:bg-neutral-900/20 shadow-[0_4px_20px_rgba(0,0,0,0.01)] hover:shadow-[0_12px_35px_rgba(0,0,0,0.04)] dark:shadow-none transition-all duration-300"
-                  >
-                    <div>
-                      <div className="w-8 h-8 rounded-full bg-neutral-200/50 dark:bg-neutral-800/50 text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 flex items-center justify-center mb-5 select-none">
-                        03
-                      </div>
-                      <h3 className="font-sans text-xs font-bold tracking-wider uppercase text-neutral-900 dark:text-neutral-100">
-                        {activeT.features.card3Title}
-                      </h3>
-                      <div className="text-[10px] text-cobalt dark:text-sky-400 font-medium mt-1.5 font-sans italic">
-                        {lang === "tr" ? "Varsayılan sol kenar çubuğu ayarları." : "Default left sidebar settings."}
-                      </div>
-                      <p className="mt-3.5 text-xs leading-relaxed text-neutral-500 dark:text-neutral-400">
-                        {activeT.features.card3Desc}
-                      </p>
-                    </div>
-                    <span className="mt-6 self-start inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-neutral-200/50 bg-neutral-100/50 dark:border-neutral-800/50 dark:bg-neutral-900/50 text-[9px] font-mono font-bold tracking-widest uppercase text-neutral-400 dark:text-neutral-500 select-none">
-                      {activeT.features.card3Foot}
-                    </span>
-                  </motion.div>
-                </motion.div>
-              </div>
-
-              <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-none z-10 pointer-events-none">
-                <svg viewBox="0 0 1440 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-6 block text-[#FAF9F6] dark:text-[#050505]">
-                  <path d="M0,0 Q60,20 120,0 Q180,20 240,0 Q300,20 360,0 Q420,20 480,0 Q540,20 600,0 Q660,20 720,0 Q780,20 840,0 Q900,20 960,0 Q1020,20 1080,0 Q1140,20 1200,0 Q1260,20 1320,0 Q1380,20 1440,0 L1440,24 L0,24 Z" fill="currentColor" />
-                </svg>
-              </div>
-            </section>
-
-            <section className="relative w-full pb-20 pt-16 mesh-bg" id="surumler">
-              <div className="mx-auto max-w-5xl px-6 relative z-10">
-                <div className="text-center mb-12">
-                  <span className="text-[9px] font-bold tracking-[0.2em] text-neutral-400 dark:text-neutral-500 uppercase block">
-                    {activeT.releases.tag}
-                  </span>
-                  <h2 className="mt-2 font-serif text-2xl font-medium tracking-tight sm:text-3xl text-neutral-900 dark:text-white">
-                    {activeT.releases.title}
-                  </h2>
-                  {isApiFallback && (
-                    <p className="mt-3 text-[9px] font-mono text-neutral-500 bg-neutral-100/60 dark:bg-neutral-900/60 py-1 px-3.5 inline-block rounded-full border border-neutral-200/50 dark:border-neutral-800/50 select-none">
-                      {activeT.releases.fallbackNotice}
-                    </p>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                  <div className="lg:col-span-5">
-                    {loading ? (
-                      <div className="p-6 rounded-2xl border border-neutral-200/40 dark:border-neutral-850/40 bg-white/60 dark:bg-neutral-900/30 animate-pulse space-y-4">
-                        <div className="h-3.5 bg-neutral-200 dark:bg-neutral-800 rounded w-1/4" />
-                        <div className="h-6 bg-neutral-200 dark:bg-neutral-800 rounded w-2/3" />
-                        <div className="h-3 bg-neutral-200 dark:bg-neutral-800 rounded w-1/2" />
-                      </div>
-                    ) : (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="p-6 md:p-7 rounded-2xl border border-neutral-200/40 dark:border-neutral-800/40 bg-white/70 dark:bg-neutral-900/35 backdrop-blur-sm shadow-[0_12px_40px_rgba(0,0,0,0.02)]"
-                        id="active-release-card"
-                      >
-                        <div className="flex items-center justify-between border-b border-neutral-200/40 dark:border-neutral-800/40 pb-4">
-                          <span className="px-2.5 py-0.5 rounded-full bg-cobalt/10 text-cobalt dark:bg-sky-950/45 dark:text-sky-300 font-mono text-[9px] font-bold tracking-widest uppercase">
-                            {activeT.releases.latestAlpha}
-                          </span>
-                          <span className="text-[9px] text-neutral-400 dark:text-neutral-500 font-mono">
-                            {formatLocalizedDate(activeRelease?.published_at || "", lang)}
-                          </span>
-                        </div>
-
-                        <div className="mt-5">
-                          <h3 className="font-sans text-sm font-bold tracking-wider text-neutral-900 dark:text-white">
-                            {activeRelease?.tag_name || "Unknown"}
-                          </h3>
-                          <p className="mt-1 text-[10px] text-neutral-400 dark:text-neutral-500 font-mono">
-                            {activeRelease?.name || "Initial Alpha Release"}
-                          </p>
-                        </div>
-
-                        <div className="mt-6" id="release-assets-download-list">
-                          <div className="text-[9px] font-bold uppercase tracking-widest text-neutral-400 dark:text-neutral-500 font-mono mb-4">
-                            {activeT.releases.binaryTitle}
-                          </div>
-
-                          <div className="space-y-2">
-                            {activeRelease?.assets && activeRelease.assets.length > 0 ? (
-                              activeRelease.assets.map((asset) => (
-                                <button
-                                  key={asset.id}
-                                  id={`direct-asset-dl-${asset.id}`}
-                                  onClick={() => {
-                                    setSelectedAssetId(asset.id);
-                                    setIsDownloadOpen(true);
-                                  }}
-                                  className="w-full flex items-center justify-between p-3 rounded-xl border border-neutral-200/35 hover:bg-neutral-50 dark:border-neutral-800/35 dark:hover:bg-neutral-900/35 transition-all text-left"
-                                >
-                                  <div className="flex items-center gap-3">
-                                    <span className="font-mono text-[8px] tracking-wider text-neutral-500 dark:text-neutral-400 font-bold border border-neutral-200 dark:border-neutral-800 rounded-full px-2 py-0.5 bg-neutral-100/50 dark:bg-neutral-900/50">
-                                      {getOSIconForAsset(asset.name)}
-                                    </span>
-                                    <div className="truncate max-w-[160px] md:max-w-[200px]">
-                                      <div className="text-[11.5px] font-semibold text-neutral-800 dark:text-neutral-200 truncate">
-                                        {asset.name}
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <span className="font-mono text-[9px] text-neutral-400 dark:text-neutral-500 shrink-0">
-                                    {formatBytes(asset.size)}
-                                  </span>
-                                </button>
-                              ))
-                            ) : (
-                              <div className="text-center py-4">
-                                <a
-                                  href={activeRelease?.html_url || "https://github.com/VastSea0/hilal-browser/releases"}
-                                  target="_blank"
-                                  className="text-[10px] font-semibold text-neutral-400 hover:text-neutral-600 underline font-mono"
-                                >
-                                  {activeT.releases.allReleasesLink}
-                                </a>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </div>
-
-                  <div className="lg:col-span-7">
-                    {loading ? (
-                      <div className="p-6 space-y-4 border border-neutral-200/40 dark:border-neutral-850/40 bg-white/60 dark:bg-neutral-900/30 rounded-2xl animate-pulse">
-                        <div className="h-3 bg-neutral-200 dark:bg-neutral-800 rounded w-1/4" />
-                        <div className="space-y-2 pt-3">
-                          <div className="h-3 bg-neutral-200 dark:bg-neutral-800 rounded w-full" />
-                          <div className="h-3 bg-neutral-200 dark:bg-neutral-800 rounded w-11/12" />
-                        </div>
-                      </div>
-                    ) : (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="p-6 md:p-7 rounded-2xl border border-neutral-200/40 dark:border-neutral-800/40 bg-white/70 dark:bg-neutral-900/35 backdrop-blur-sm shadow-[0_12px_40px_rgba(0,0,0,0.02)]"
-                        id="changelog-details-box"
-                      >
-                        <div className="flex items-center gap-2 text-[9px] font-mono font-bold tracking-widest text-neutral-400 dark:text-neutral-500 mb-5 uppercase">
-                          <Terminal className="h-3.5 w-3.5" />
-                          <span>{activeT.releases.changelogTitle}</span>
-                        </div>
-
-                        <div className="prose prose-sm dark:prose-invert max-w-none text-left font-sans select-text">
-                          {activeRelease?.body ? (
-                            <div className="space-y-4">
-                              {parseChangelogToSimpleLines(activeRelease.body).map((line, idx) => {
-                                if (line.type === "header") {
-                                  return (
-                                    <h4
-                                      key={idx}
-                                      className="font-sans text-xs font-bold tracking-wider text-neutral-900 dark:text-neutral-100 border-b border-neutral-200/40 dark:border-neutral-800/40 pb-1 mt-5 first:mt-0"
-                                    >
-                                      {line.text}
-                                    </h4>
-                                  );
-                                } else if (line.type === "item") {
-                                  return (
-                                    <div key={idx} className="flex gap-2.5 text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed">
-                                      <span className="text-neutral-350 dark:text-neutral-700 shrink-0 select-none">—</span>
-                                      <span
-                                        dangerouslySetInnerHTML={{
-                                          __html: line.text
-                                            .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-                                            .replace(/`(.*?)`/g, "<code class='font-mono bg-neutral-100/80 dark:bg-neutral-950/80 px-1 py-0.5 rounded text-neutral-650 dark:text-neutral-350'>$1</code>")
-                                        }}
-                                      />
-                                    </div>
-                                  );
-                                } else {
-                                  return (
-                                    <p
-                                      key={idx}
-                                      className="text-xs text-neutral-450 dark:text-neutral-500 italic"
-                                      dangerouslySetInnerHTML={{
-                                        __html: line.text.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-                                      }}
-                                    />
-                                  );
-                                }
-                              })}
-                            </div>
-                          ) : (
-                            <p className="text-xs italic text-neutral-400 dark:text-neutral-500 text-center py-6">
-                              {activeT.releases.fallbackChangelog}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="mt-8 pt-4 border-t border-neutral-200/40 dark:border-neutral-800/40 flex flex-wrap gap-5 items-center justify-between text-[10px] font-mono">
-                          <a
-                            href="https://github.com/VastSea0/hilal-browser/issues"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-neutral-400 hover:text-neutral-900 dark:text-neutral-500 dark:hover:text-neutral-300 flex items-center gap-1 transition-colors"
-                          >
-                            {activeT.releases.bugReport}
-                          </a>
-                          <a
-                            href="https://discord.gg/JZJ4tmPHFw"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-neutral-400 hover:text-neutral-900 dark:text-neutral-500 dark:hover:text-neutral-300 flex items-center gap-1 transition-colors"
-                          >
-                            Discord
-                          </a>
-                          <a
-                            href="https://github.com/VastSea0/hilal-browser/commits"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-neutral-400 hover:text-neutral-900 dark:text-neutral-500 dark:hover:text-neutral-300 flex items-center gap-1 transition-colors"
-                          >
-                            {activeT.releases.commits}
-                          </a>
-                        </div>
-                      </motion.div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="mt-12 text-center">
-                  <button
-                    onClick={() => {
-                      setView("releases");
-                      window.scrollTo({ top: 0, behavior: "smooth" });
-                    }}
-                    className="inline-flex items-center gap-2 rounded-full border border-neutral-300 hover:bg-neutral-55 hover:border-neutral-400/80 dark:border-neutral-800 dark:hover:bg-neutral-900 px-6.5 py-3.5 text-[9.5px] font-sans font-bold tracking-widest uppercase text-neutral-600 dark:text-neutral-400 transition-all active:scale-[0.98] shadow-sm select-none"
-                  >
-                    <ListRestart className="h-3.5 w-3.5" />
-                    {lang === "tr" ? "Tüm Sürüm Arşivi ve Tarihçe →" : "Full Release Archive & History →"}
-                  </button>
-                </div>
-              </div>
-            </section>
-
-            <section className="relative w-full pb-24 pt-12 mesh-bg border-t border-neutral-200/20 dark:border-neutral-900/20" id="vizyon">
-              <div className="mx-auto max-w-4xl px-6 relative z-10">
-                <div className="text-center mb-12">
-                  <span className="text-[9px] font-bold tracking-[0.2em] text-neutral-400 dark:text-neutral-500 uppercase block">
-                    {activeT.principles.tag}
-                  </span>
-                  <h2 className="mt-2 font-serif text-2xl font-medium tracking-tight sm:text-3xl text-neutral-900 dark:text-white">
-                    {activeT.principles.title}
-                  </h2>
-                </div>
-
-                <motion.div
-                  variants={cardContainerVariants}
-                  initial="hidden"
-                  whileInView="visible"
-                  viewport={{ once: true, margin: "-100px" }}
-                  className="grid grid-cols-1 md:grid-cols-2 gap-8"
-                  id="core-values-bento"
-                >
-                  <motion.div
-                    variants={cardVariants}
-                    whileHover={{ y: -6, transition: { duration: 0.2 } }}
-                    className="p-6 md:p-8 flex flex-col justify-between text-left rounded-2xl border border-neutral-200/40 bg-white/70 hover:bg-white dark:border-neutral-800/40 dark:bg-neutral-900/35 dark:hover:bg-neutral-900/50 shadow-[0_4px_20px_rgba(0,0,0,0.01)] hover:shadow-[0_12px_35px_rgba(0,0,0,0.04)] transition-all duration-300"
-                  >
-                    <div>
-                      <div className="h-10 w-10 rounded-full border border-neutral-200/50 bg-neutral-100/50 dark:border-neutral-800/50 dark:bg-neutral-950/50 flex items-center justify-center mb-5 text-neutral-500 dark:text-neutral-400 select-none">
-                        <CodeXml className="h-5 w-5" />
-                      </div>
-                      <h3 className="font-sans text-xs font-bold tracking-wider uppercase text-neutral-900 dark:text-white">
-                        {activeT.principles.card1Title}
-                      </h3>
-                      <div className="text-[10px] text-cobalt dark:text-sky-400 font-medium mt-1 font-sans italic">
-                        {lang === "tr" ? "Patch ve overlay dosyaları repoda." : "Patch and overlay files are in the repo."}
-                      </div>
-                      <p className="mt-3.5 text-xs leading-relaxed text-neutral-500 dark:text-neutral-400">
-                        {activeT.principles.card1Desc}
-                      </p>
-                    </div>
-                    <a
-                      href="https://github.com/VastSea0/hilal-browser"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-6 self-start inline-flex items-center gap-1.5 px-4.5 py-1.5 rounded-full border border-neutral-200/60 bg-white text-[9.5px] font-mono font-bold tracking-widest uppercase text-neutral-500 hover:bg-neutral-100 hover:text-neutral-850 dark:border-neutral-800/65 dark:bg-neutral-900/60 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-white transition-all select-none"
-                    >
-                      {activeT.principles.card1Link}
-                      <ArrowRight className="h-3 w-3" />
-                    </a>
-                  </motion.div>
-
-                  <motion.div
-                    variants={cardVariants}
-                    whileHover={{ y: -6, transition: { duration: 0.2 } }}
-                    className="p-6 md:p-8 flex flex-col justify-between text-left rounded-2xl border border-neutral-200/40 bg-white/70 hover:bg-white dark:border-neutral-800/40 dark:bg-neutral-900/35 dark:hover:bg-neutral-900/50 shadow-[0_4px_20px_rgba(0,0,0,0.01)] hover:shadow-[0_12px_35px_rgba(0,0,0,0.04)] transition-all duration-300"
-                  >
-                    <div>
-                      <div className="h-10 w-10 rounded-full border border-neutral-200/50 bg-neutral-100/50 dark:border-neutral-800/50 dark:bg-neutral-950/50 flex items-center justify-center mb-5 text-neutral-500 dark:text-neutral-400 select-none">
-                        <Lock className="h-5 w-5" />
-                      </div>
-                      <h3 className="font-sans text-xs font-bold tracking-wider uppercase text-neutral-900 dark:text-white">
-                        {activeT.principles.card2Title}
-                      </h3>
-                      <div className="text-[10px] text-cobalt dark:text-sky-400 font-medium mt-1 font-sans italic">
-                        {lang === "tr" ? "Yerel Firefox checkout'u üzerinde çalışır." : "Runs against the local Firefox checkout."}
-                      </div>
-                      <p className="mt-3.5 text-xs leading-relaxed text-neutral-500 dark:text-neutral-400">
-                        {activeT.principles.card2Desc}
-                      </p>
-                    </div>
-                    <div className="mt-6 self-start inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-neutral-200 bg-neutral-100/70 text-[9px] font-mono font-bold tracking-widest uppercase text-neutral-450 dark:border-neutral-800/60 dark:bg-neutral-900/40 dark:text-neutral-500 select-none">
-                      <BookmarkCheck className="h-3.5 w-3.5" />
-                      <span>{activeT.principles.card2Foot}</span>
-                    </div>
-                  </motion.div>
-                </motion.div>
-              </div>
-
-              <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-none z-10 pointer-events-none">
-                <svg viewBox="0 0 1440 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-6 block text-[#FAF9F6] dark:text-[#050505]">
-                  <path d="M0,0 Q60,20 120,0 Q180,20 240,0 Q300,20 360,0 Q420,20 480,0 Q540,20 600,0 Q660,20 720,0 Q780,20 840,0 Q900,20 960,0 Q1020,20 1080,0 Q1140,20 1200,0 Q1260,20 1320,0 Q1380,20 1440,0 L1440,24 L0,24 Z" fill="currentColor" />
-                </svg>
-              </div>
-            </section>
-
-            <section className="mx-auto max-w-3xl px-6 py-16 md:py-24" id="faq-section">
-              <div className="text-center mb-12">
-                <span className="text-[9px] font-bold tracking-[0.2em] text-neutral-400 dark:text-neutral-500 uppercase block">
-                  {activeT.faq.tag}
-                </span>
-                <h2 className="mt-2 font-serif text-2xl font-medium tracking-tight sm:text-3xl text-neutral-900 dark:text-white">
-                  {activeT.faq.title}
-                </h2>
-              </div>
-
-              <div className="space-y-3.5" id="faq-accordion-group">
-                {faqList.map((faq, idx) => {
-                  const isOpen = activeFaq === idx;
-                  return (
-                    <div
-                      key={idx}
-                      id={`faq-item-${idx}`}
-                      className="text-left rounded-2xl border border-neutral-200/30 dark:border-neutral-850/40 bg-white/30 dark:bg-neutral-900/10 hover:bg-white/60 dark:hover:bg-neutral-900/20 transition-all duration-200 overflow-hidden"
-                    >
-                      <button
-                        onClick={() => setActiveFaq(isOpen ? null : idx)}
-                        className="w-full flex items-center justify-between text-left font-sans text-xs md:text-sm font-bold text-neutral-800 dark:text-neutral-200 py-4.5 px-5 hover:text-neutral-950 dark:hover:text-white transition-colors"
-                      >
-                        <span>{faq.q}</span>
-                        <motion.div
-                          animate={{ rotate: isOpen ? 180 : 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="shrink-0 pl-3"
-                        >
-                          <ChevronDown className="h-4 w-4 text-neutral-400" />
-                        </motion.div>
-                      </button>
-
-                      <AnimatePresence initial={false}>
-                        {isOpen && (
-                          <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: "auto", opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.25, ease: "easeInOut" }}
-                            className="overflow-hidden"
-                          >
-                            <div className="pb-5 pt-1 px-5 text-xs leading-relaxed text-neutral-500 dark:text-neutral-400">
-                              {faq.a}
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          </motion.div>
-        ) : (
-          <motion.main
-            key="releases-page"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            transition={{ duration: 0.3 }}
-            className="mx-auto max-w-3xl px-6 py-16 md:py-24"
-          >
-            <button
-              onClick={() => setView("home")}
-              className="inline-flex items-center gap-2 text-[10px] font-mono font-bold tracking-widest uppercase text-neutral-450 hover:text-neutral-900 dark:hover:text-white transition-colors mb-8"
-            >
-              ← {lang === "tr" ? "Ana Sayfaya Dön" : "Back to Home"}
-            </button>
-
-            <div className="mb-12 border-b border-neutral-200/50 dark:border-neutral-900/50 pb-6">
-              <span className="text-[9px] font-mono font-bold tracking-[0.25em] text-neutral-400 dark:text-neutral-500 uppercase block mb-1">
-                {activeT.releases.tag}
-              </span>
-              <h1 className="font-serif text-3xl md:text-4xl font-normal text-neutral-900 dark:text-white">
-                {lang === "tr" ? "Sürüm Arşivi" : "Release History"}
-              </h1>
-              <p className="mt-2 text-xs text-neutral-400 dark:text-neutral-500">
-                {activeT.releases.timelineSubtitle}
-              </p>
-            </div>
-
-            <div className="divide-y divide-neutral-200/50 dark:divide-neutral-900/50">
-              {allReleasesTimeline.map((item, index) => {
-                const buildTypes = getBuildTypesForRelease(item);
-                const summaryLines = getReleaseSummaryLines(item.body);
-                return (
-                  <article
-                    key={`${item.id}-${item.tag_name}`}
-                    className="py-8 first:pt-0 last:pb-0"
-                  >
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-[9px] text-neutral-400 dark:text-neutral-500">
-                            {formatLocalizedDate(item.published_at, lang)}
-                          </span>
-                          {index === 0 && (
-                            <span className="rounded bg-neutral-100 dark:bg-neutral-900 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-                              {activeT.releases.currentBuild}
-                            </span>
-                          )}
-                        </div>
-                        <h3 className="mt-2 font-sans text-sm font-bold text-neutral-800 dark:text-neutral-200">
-                          {item.tag_name} — <span className="font-normal text-neutral-400 dark:text-neutral-500">{item.name || item.tag_name}</span>
-                        </h3>
-                      </div>
-                      <a
-                        href={item.html_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex shrink-0 items-center gap-1.5 text-[10px] font-mono text-neutral-400 hover:text-neutral-950 dark:text-neutral-500 dark:hover:text-white transition-colors"
-                      >
-                        {activeT.releases.viewRelease}
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
-                    </div>
-
-                    {buildTypes.length > 0 && (
-                      <div className="mt-3 flex flex-wrap gap-1.5">
-                        {buildTypes.map(type => (
-                          <span
-                            key={`${item.id}-${type}`}
-                            className="rounded border border-neutral-200/70 bg-neutral-50 px-2 py-0.5 text-[9px] font-mono text-neutral-400 dark:border-neutral-900 dark:bg-neutral-950 dark:text-neutral-500"
-                          >
-                            {type}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-
-                    {summaryLines.length > 0 && (
-                      <div className="mt-4 space-y-1.5">
-                        {summaryLines.map((line, lineIndex) => (
-                          <div
-                            key={`${item.id}-line-${lineIndex}`}
-                            className="flex gap-2 text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed"
-                          >
-                            <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-neutral-200 dark:bg-neutral-800" />
-                            <span>{line.text.replace(/\*\*/g, "").replace(/`/g, "")}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </article>
-                );
-              })}
-            </div>
-          </motion.main>
-        )}
-      </AnimatePresence>
-
-      <footer
-        className="w-full bg-[#0b0f19] text-neutral-350 py-16 relative overflow-hidden"
-        id="app-footer"
-      >
-        <div className="mx-auto max-w-6xl px-6 relative z-10">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-10 border-b border-neutral-850">
-            <div className="flex items-center gap-3">
-              <img
-                src="/default128.png"
-                alt="Hilal Logo"
-                className="h-6 w-6 opacity-95"
-                referrerPolicy="no-referrer"
-              />
-              <span className="font-sans text-[10.5px] font-bold tracking-[0.2em] uppercase text-white">
-                hilal <span className="text-neutral-500 font-light">browser</span>
-              </span>
-            </div>
-
-            <p className="font-serif italic text-xs text-sky-200/65 text-center select-text max-w-sm md:max-w-none">
-              “{activeT.footer.quote}”
-            </p>
-
-            <div className="flex items-center gap-4">
-              <a
-                href="https://github.com/VastSea0/hilal-browser"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-neutral-400 hover:text-white transition-colors"
-                aria-label="GitHub Repository"
-              >
-                <Github className="h-4.5 w-4.5" />
-              </a>
-              <a
-                href="https://discord.gg/JZJ4tmPHFw"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-neutral-400 hover:text-white transition-colors"
-                aria-label="Discord Server"
-              >
-                <span className="flex h-4.5 w-4.5 items-center justify-center">
-                  <SiDiscord />
-                </span>
-              </a>
-              <button
-                id="footer-download-btn"
-                onClick={() => setIsDownloadOpen(true)}
-                className="text-[9px] font-bold tracking-widest uppercase border border-neutral-800 bg-neutral-900/60 px-4 py-2 rounded-full text-white hover:border-neutral-700 hover:bg-neutral-900 transition-colors font-mono select-none"
-              >
-                {activeT.footer.install}
-              </button>
-            </div>
-          </div>
-
-          <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-center text-[9.5px] font-mono text-neutral-500">
-            <p className="select-text">
-              &copy; {new Date().getFullYear()} {activeT.footer.copyright}
-            </p>
-            <p className="select-text">
-              {activeT.footer.license}
-            </p>
           </div>
         </div>
       </footer>
 
+      {/* Calm Download Modal */}
       <DownloadModal
         isOpen={isDownloadOpen}
-        onClose={() => {
-          setIsDownloadOpen(false);
-          setSelectedAssetId(null);
-        }}
+        onClose={() => setIsDownloadOpen(false)}
         release={activeRelease}
         lang={lang}
-        initialAssetId={selectedAssetId}
+        theme={theme}
       />
     </div>
   );

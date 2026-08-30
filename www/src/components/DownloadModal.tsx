@@ -1,298 +1,237 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Download, Monitor, Command, Terminal, CheckCircle2, Search } from "lucide-react";
+import {
+  Download,
+  X,
+  Apple,
+  Laptop,
+  Terminal,
+  ExternalLink,
+  CheckCircle2
+} from "lucide-react";
 import { GithubRelease, GithubAsset } from "../types";
-import { formatBytes, detectOS, getRecommendedAsset } from "../utils/github";
+import { formatBytes } from "../utils/github";
 
 interface DownloadModalProps {
   isOpen: boolean;
   onClose: () => void;
   release: GithubRelease | null;
-  lang: 'tr' | 'en';
-  initialAssetId?: number | null;
+  lang: "tr" | "en";
+  theme: "light" | "dark";
 }
 
-export default function DownloadModal({ isOpen, onClose, release, lang, initialAssetId }: DownloadModalProps) {
+export default function DownloadModal({
+  isOpen,
+  onClose,
+  release,
+  lang,
+  theme,
+}: DownloadModalProps) {
   const [downloadedAsset, setDownloadedAsset] = useState<GithubAsset | null>(null);
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  
-  const inputRef = useRef<HTMLInputElement>(null);
 
-  // Translations
   const t = {
     tr: {
-      searchPlaceholder: "Hilal kurulum paketini seçin...",
-      recommended: "Önerilen",
-      other: "Diğer Platformlar",
-      successTitle: "İndirme Başlatıldı",
-      successDesc: "Dosya indirme kuyruğuna eklendi.",
-      restart: "Tekrar Başlat",
-      safe: "Kaynak GitHub'da",
-      navHint: "gezin",
-      selectHint: "seç",
-      closeHint: "kapat"
+      title: "Hilal Browser'ı İndir",
+      subtitle: "İşletim sisteminiz için derlenmiş resmi kurulum paketini seçin.",
+      downloadStarted: "İndirme Başlatıldı",
+      downloadDesc: "Kurulum paketi doğrudan GitHub üzerinden indiriliyor.",
+      close: "Kapat",
+      redownload: "Tekrar İndir",
+      viewReleases: "Tüm sürümleri GitHub üzerinde inceleyin",
+      platforms: {
+        macos: "macOS (Apple Silicon & Intel)",
+        windowsExe: "Windows (Kurulum Paketi .exe)",
+        windowsZip: "Windows (Taşınabilir .zip)",
+        linuxDeb: "Linux (Debian / Ubuntu .deb)",
+        linuxAppImage: "Linux (Evrensel .AppImage)",
+        linuxTar: "Linux (Kaynak Arşivi .tar.gz)"
+      }
     },
     en: {
-      searchPlaceholder: "Select Hilal installation package...",
-      recommended: "Recommended",
-      other: "Other Platforms",
-      successTitle: "Download Initiated",
-      successDesc: "File has been added to your download queue.",
-      restart: "Restart",
-      safe: "Source on GitHub",
-      navHint: "navigate",
-      selectHint: "select",
-      closeHint: "close"
+      title: "Download Hilal Browser",
+      subtitle: "Select the official build artifact for your operating system.",
+      downloadStarted: "Download Initiated",
+      downloadDesc: "The release package is downloading directly from GitHub.",
+      close: "Close",
+      redownload: "Download Again",
+      viewReleases: "Inspect all releases on GitHub",
+      platforms: {
+        macos: "macOS (Apple Silicon & Intel)",
+        windowsExe: "Windows (Installer .exe)",
+        windowsZip: "Windows (Portable .zip)",
+        linuxDeb: "Linux (Debian / Ubuntu .deb)",
+        linuxAppImage: "Linux (Universal .AppImage)",
+        linuxTar: "Linux (Tarball .tar.gz)"
+      }
     }
   };
 
-  const activeTranslation = t[lang] || t.tr;
-  const activeAssets = release?.assets || [];
-
-  const os = detectOS();
-  const recommendedAsset = getRecommendedAsset(activeAssets, os);
-  const initialAsset = initialAssetId ? activeAssets.find(a => a.id === initialAssetId) : null;
-  const primaryAsset = initialAsset || recommendedAsset || (activeAssets.length > 0 ? activeAssets[0] : null);
-
-  const displayAssets = [
-    ...(primaryAsset ? [primaryAsset] : []),
-    ...activeAssets.filter(a => !primaryAsset || a.id !== primaryAsset.id)
-  ];
+  const activeT = t[lang] || t.tr;
+  const assets = release?.assets || [];
 
   useEffect(() => {
     if (isOpen) {
-      setSelectedIndex(0);
       setDownloadedAsset(null);
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 100);
     }
   }, [isOpen]);
-
-  useEffect(() => {
-    if (!isOpen || downloadedAsset) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        setSelectedIndex(prev => (prev + 1) % displayAssets.length);
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        setSelectedIndex(prev => (prev - 1 + displayAssets.length) % displayAssets.length);
-      } else if (e.key === 'Enter') {
-        e.preventDefault();
-        const asset = displayAssets[selectedIndex];
-        if (asset) {
-          handleDownload(asset);
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, displayAssets, selectedIndex, downloadedAsset]);
 
   const handleDownload = (asset: GithubAsset) => {
     setDownloadedAsset(asset);
     window.location.href = asset.browser_download_url;
   };
 
-  const getAssetDetails = (filename: string) => {
-    const lower = filename.toLowerCase();
-    if (lower.endsWith(".exe")) return { title: "Windows Installer", type: "EXE", icon: <Monitor className="w-5 h-5"/> };
-    if (lower.endsWith(".zip")) return { title: "Windows Portable", type: "ZIP", icon: <Monitor className="w-5 h-5"/> };
-    if (lower.endsWith(".dmg")) return { title: "macOS Universal", type: "DMG", icon: <Command className="w-5 h-5"/> };
-    if (lower.endsWith(".deb")) return { title: "Linux DEB", type: "DEB", icon: <Terminal className="w-5 h-5"/> };
-    if (lower.endsWith(".appimage")) return { title: "Linux AppImage", type: "AppImage", icon: <Terminal className="w-5 h-5"/> };
-    if (lower.endsWith(".tar.gz") || lower.endsWith(".tar.xz")) return { title: "Linux Archive", type: "TAR", icon: <Terminal className="w-5 h-5"/> };
-    return { title: "Developer Build", type: "BIN", icon: <Terminal className="w-5 h-5"/> };
-  };
+  function getPlatformInfo(name: string) {
+    const n = name.toLowerCase();
+    if (n.endsWith(".dmg")) return { label: activeT.platforms.macos, icon: <Apple className="w-5 h-5" /> };
+    if (n.endsWith(".installer.exe") || (n.endsWith(".exe") && !n.includes("zip")))
+      return { label: activeT.platforms.windowsExe, icon: <Laptop className="w-5 h-5" /> };
+    if (n.endsWith(".zip")) return { label: activeT.platforms.windowsZip, icon: <Laptop className="w-5 h-5" /> };
+    if (n.endsWith(".deb")) return { label: activeT.platforms.linuxDeb, icon: <Terminal className="w-5 h-5" /> };
+    if (n.endsWith(".appimage")) return { label: activeT.platforms.linuxAppImage, icon: <Terminal className="w-5 h-5" /> };
+    return { label: activeT.platforms.linuxTar, icon: <Terminal className="w-5 h-5" /> };
+  }
+
+  const isDark = theme === "dark";
 
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[12vh] sm:pt-[15vh] px-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-neutral-900/40 dark:bg-black/60 backdrop-blur-md"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm"
           />
 
+          {/* Modal Card */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.98, y: -20, filter: "blur(10px)" }}
-            animate={{ opacity: 1, scale: 1, y: 0, filter: "blur(0px)" }}
-            exit={{ opacity: 0, scale: 0.98, y: -10, filter: "blur(5px)" }}
-            transition={{ type: "spring", stiffness: 400, damping: 30 }}
-            className="relative w-full max-w-2xl bg-white/90 dark:bg-[#111111]/90 border border-black/10 dark:border-white/10 shadow-[0_32px_80px_rgba(0,0,0,0.3)] rounded-2xl overflow-hidden backdrop-blur-3xl flex flex-col"
-            style={{ maxHeight: "70vh" }}
+            initial={{ opacity: 0, scale: 0.96, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: 12 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className={`relative w-full max-w-lg rounded-2xl border p-6 sm:p-8 shadow-2xl transition-colors ${
+              isDark
+                ? "bg-[#111114] border-white/[0.1] text-[#f4f4f6]"
+                : "bg-[#ffffff] border-black/[0.1] text-[#18181b]"
+            }`}
           >
-            <div className="flex items-center gap-4 px-6 py-5 border-b border-neutral-200/50 dark:border-white/10 bg-white/50 dark:bg-black/50">
-              {downloadedAsset ? (
-                <CheckCircle2 className="w-6 h-6 text-emerald-500 animate-pulse" />
-              ) : (
-                <Search className="w-6 h-6 text-neutral-400" />
-              )}
-              
-              <input 
-                 ref={inputRef}
-                 readOnly
-                 value={downloadedAsset ? activeTranslation.successTitle : activeTranslation.searchPlaceholder}
-                 className="w-full bg-transparent text-xl sm:text-2xl font-medium text-neutral-900 dark:text-white outline-none cursor-default"
-              />
-              <div className="flex items-center gap-2 text-[10px] font-mono font-bold text-neutral-500 uppercase tracking-widest hidden sm:flex">
-                <span className="px-2 py-1 rounded bg-neutral-100 dark:bg-white/10 border border-neutral-200/50 dark:border-white/5 shadow-sm">
-                  ESC
-                </span>
-              </div>
-            </div>
+            {/* Close Button */}
+            <button
+              onClick={onClose}
+              className={`absolute top-5 right-5 p-1.5 rounded-full transition-colors ${
+                isDark
+                  ? "text-neutral-400 hover:text-white hover:bg-white/10"
+                  : "text-neutral-500 hover:text-black hover:bg-black/5"
+              }`}
+            >
+              <X className="w-4 h-4" />
+            </button>
 
-            <AnimatePresence mode="wait">
-              {!downloadedAsset ? (
-                <motion.div
-                  key="list"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="flex flex-col overflow-y-auto custom-scrollbar"
-                >
-                  <div className="p-3">
-                    {primaryAsset && (
-                      <div className="mb-4">
-                        <div className="px-3 py-2 text-[10px] font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-widest">
-                          {activeTranslation.recommended}
-                        </div>
-                        <button 
-                          onMouseEnter={() => setSelectedIndex(0)}
-                          onClick={() => handleDownload(primaryAsset)}
-                          className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl transition-all cursor-pointer ${
-                            selectedIndex === 0 
-                              ? 'bg-indigo-500 dark:bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 scale-[1.01]' 
-                              : 'text-neutral-900 dark:text-white hover:bg-neutral-100 dark:hover:bg-white/5'
-                          }`}
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className={`${selectedIndex === 0 ? 'text-white' : 'text-indigo-500 dark:text-indigo-400'}`}>
-                              {getAssetDetails(primaryAsset.name).icon}
+            {downloadedAsset ? (
+              <div className="text-center py-6">
+                <div className="mx-auto w-12 h-12 rounded-full bg-blue-500/15 text-blue-500 flex items-center justify-center mb-4">
+                  <CheckCircle2 className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-bold tracking-tight">
+                  {activeT.downloadStarted}
+                </h3>
+                <p className={`mt-1.5 text-sm ${isDark ? "text-neutral-400" : "text-neutral-600"}`}>
+                  {activeT.downloadDesc}
+                </p>
+                <p className={`mt-3 text-xs font-mono px-3 py-1.5 rounded-lg inline-block ${
+                  isDark ? "bg-white/5 text-neutral-300" : "bg-black/5 text-neutral-700"
+                }`}>
+                  {downloadedAsset.name} • {formatBytes(downloadedAsset.size)}
+                </p>
+                <div className="mt-6 flex justify-center gap-3">
+                  <button
+                    onClick={() => handleDownload(downloadedAsset)}
+                    className="px-5 py-2.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-md transition-colors"
+                  >
+                    {activeT.redownload}
+                  </button>
+                  <button
+                    onClick={onClose}
+                    className={`px-5 py-2.5 rounded-full text-xs font-medium transition-colors ${
+                      isDark ? "bg-white/10 text-neutral-200 hover:bg-white/15" : "bg-black/5 text-neutral-800 hover:bg-black/10"
+                    }`}
+                  >
+                    {activeT.close}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <div className="mb-6">
+                  <h3 className="text-xl font-bold tracking-tight">
+                    {activeT.title}
+                  </h3>
+                  <p className={`mt-1 text-xs ${isDark ? "text-neutral-400" : "text-neutral-600"}`}>
+                    {activeT.subtitle}
+                  </p>
+                </div>
+
+                <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+                  {assets.map((asset) => {
+                    const info = getPlatformInfo(asset.name);
+                    return (
+                      <button
+                        key={asset.id}
+                        onClick={() => handleDownload(asset)}
+                        className={`w-full flex items-center justify-between p-3.5 rounded-xl border transition-all text-left group cursor-pointer ${
+                          isDark
+                            ? "border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.06] hover:border-white/[0.14]"
+                            : "border-black/[0.06] bg-black/[0.02] hover:bg-black/[0.05] hover:border-black/[0.12]"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3.5">
+                          <div className={`transition-colors ${
+                            isDark ? "text-neutral-400 group-hover:text-blue-400" : "text-neutral-600 group-hover:text-blue-600"
+                          }`}>
+                            {info.icon}
+                          </div>
+                          <div>
+                            <div className="text-xs sm:text-sm font-semibold">
+                              {info.label}
                             </div>
-                            <div className="text-left">
-                              <div className="text-base font-medium">
-                                {getAssetDetails(primaryAsset.name).title}
-                              </div>
-                              <div className={`text-xs mt-0.5 font-mono ${selectedIndex === 0 ? 'text-white/80' : 'text-neutral-500'}`}>
-                                {primaryAsset.name} • {formatBytes(primaryAsset.size)}
-                              </div>
+                            <div className={`text-[11px] font-mono ${
+                              isDark ? "text-neutral-500" : "text-neutral-500"
+                            }`}>
+                              {asset.name}
                             </div>
                           </div>
-                          
-                          {selectedIndex === 0 && (
-                            <div className="hidden sm:flex items-center gap-2 text-[10px] font-mono">
-                              <span className="bg-black/20 dark:bg-black/40 px-2 py-1 rounded flex items-center gap-1">
-                                ↵ Enter
-                              </span>
-                            </div>
-                          )}
-                        </button>
-                      </div>
-                    )}
-
-                    {displayAssets.length > 1 && (
-                      <div>
-                        <div className="px-3 py-2 text-[10px] font-bold text-neutral-400 uppercase tracking-widest">
-                          {activeTranslation.other}
                         </div>
-                        <div className="space-y-1">
-                          {displayAssets.map((asset, index) => {
-                            if (index === 0) return null;
-                            const isSelected = selectedIndex === index;
-                            
-                            return (
-                              <button 
-                                key={asset.id}
-                                onMouseEnter={() => setSelectedIndex(index)}
-                                onClick={() => handleDownload(asset)}
-                                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all cursor-pointer ${
-                                  isSelected 
-                                    ? 'bg-neutral-100 dark:bg-white/10 text-neutral-900 dark:text-white scale-[1.01]' 
-                                    : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-white/5'
-                                }`}
-                              >
-                                <div className="flex items-center gap-4">
-                                  <div className="text-neutral-400">
-                                    {getAssetDetails(asset.name).icon}
-                                  </div>
-                                  <div className="text-left">
-                                    <div className="text-sm font-medium">
-                                      {getAssetDetails(asset.name).title}
-                                    </div>
-                                    <div className="text-[10px] mt-0.5 font-mono text-neutral-400">
-                                      {asset.name} • {formatBytes(asset.size)}
-                                    </div>
-                                  </div>
-                                </div>
-                                
-                                {isSelected && (
-                                  <div className="hidden sm:flex items-center gap-2 text-[10px] font-mono text-neutral-500">
-                                    <span className="bg-neutral-200 dark:bg-black/40 px-2 py-1 rounded flex items-center gap-1">
-                                      ↵ Enter
-                                    </span>
-                                  </div>
-                                )}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="success"
-                  initial={{ opacity: 0, filter: "blur(4px)" }}
-                  animate={{ opacity: 1, filter: "blur(0px)" }}
-                  className="flex flex-col items-center justify-center py-16 px-6 text-center"
-                >
-                  <div className="w-20 h-20 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-6">
-                    <Download className="w-10 h-10 text-emerald-600 dark:text-emerald-400 animate-bounce" />
-                  </div>
-                  <h3 className="text-2xl font-serif text-neutral-900 dark:text-white mb-3">
-                    {activeTranslation.successTitle}
-                  </h3>
-                  <p className="text-neutral-500 dark:text-neutral-400 max-w-[300px] mb-8">
-                    {activeTranslation.successDesc}
-                  </p>
-                  
-                  <div className="flex items-center gap-4">
-                    <button 
-                      onClick={() => setDownloadedAsset(null)}
-                      className="px-6 py-2.5 rounded-full border border-neutral-200 dark:border-white/10 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-white/5 transition-colors font-medium text-sm"
-                    >
-                      {activeTranslation.restart}
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
 
-            {!downloadedAsset && (
-              <div className="px-6 py-3 bg-neutral-50/80 dark:bg-white/[0.02] border-t border-neutral-200/50 dark:border-white/5 flex items-center justify-between text-[11px] text-neutral-500">
-                <div className="flex items-center gap-2 font-medium">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> {activeTranslation.safe}
+                        <div className="flex items-center gap-2.5 shrink-0">
+                          <span className={`text-xs font-mono ${isDark ? "text-neutral-400" : "text-neutral-500"}`}>
+                            {formatBytes(asset.size)}
+                          </span>
+                          <div className={`p-1.5 rounded-lg transition-colors ${
+                            isDark ? "bg-white/5 text-neutral-400 group-hover:bg-blue-600 group-hover:text-white" : "bg-black/5 text-neutral-600 group-hover:bg-blue-600 group-hover:text-white"
+                          }`}>
+                            <Download className="w-3.5 h-3.5" />
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
-                <div className="hidden sm:flex gap-5 font-mono">
-                  <span className="flex items-center gap-1.5">
-                    <span className="flex gap-0.5">
-                      <kbd className="bg-neutral-200 dark:bg-white/10 px-1.5 py-0.5 rounded">↑</kbd>
-                      <kbd className="bg-neutral-200 dark:bg-white/10 px-1.5 py-0.5 rounded">↓</kbd>
-                    </span>
-                    {activeTranslation.navHint}
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <kbd className="bg-neutral-200 dark:bg-white/10 px-1.5 py-0.5 rounded">↵</kbd>
-                    {activeTranslation.selectHint}
-                  </span>
+
+                <div className={`mt-6 pt-4 border-t text-center ${
+                  isDark ? "border-white/[0.06]" : "border-black/[0.06]"
+                }`}>
+                  <a
+                    href={release?.html_url || "https://github.com/VastSea0/hilal-browser/releases"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs text-blue-500 hover:text-blue-600 font-medium transition-colors"
+                  >
+                    <span>{activeT.viewReleases}</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
                 </div>
               </div>
             )}

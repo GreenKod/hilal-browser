@@ -248,6 +248,7 @@ export default function App() {
       },
       footer: {
         copyright: "Hilal Browser Projesi. Mozilla Kamu Lisansı (MPL 2.0) ile korunmaktadır.",
+        authorBy: "Egehan Kahraman tarafından geliştirilmiştir",
         source: "Kaynak Kodu",
         releases: "Sürümler",
         discord: "Discord",
@@ -362,6 +363,7 @@ export default function App() {
       },
       footer: {
         copyright: "Hilal Browser Project. Licensed under the Mozilla Public License 2.0.",
+        authorBy: "Crafted by Egehan Kahraman",
         source: "Source Code",
         releases: "Releases",
         discord: "Discord",
@@ -759,10 +761,21 @@ export default function App() {
         </div>
       </section>
 
-      {/* 7. M3 Expressive Footer */}
+      {/* 7. Footer */}
       <footer className="py-12 border-t border-[var(--md-sys-color-outline-variant)]/30 text-xs text-[var(--md-sys-color-on-surface-variant)] bg-m3-container-lowest">
         <div className="max-w-5xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>© {new Date().getFullYear()} {activeT.footer.copyright}</p>
+          <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 text-center sm:text-left">
+            <p>© {new Date().getFullYear()} {activeT.footer.copyright}</p>
+            <span className="hidden sm:inline opacity-40">•</span>
+            <a
+              href="https://egehan.is-a.dev"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[var(--md-sys-color-primary)] hover:underline font-semibold"
+            >
+              {activeT.footer.authorBy}
+            </a>
+          </div>
           <div className="flex items-center gap-6 font-semibold">
             <a
               href="https://github.com/VastSea0/hilal-browser"

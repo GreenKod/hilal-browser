@@ -415,7 +415,7 @@ diff --git a/browser/components/preferences/main.js b/browser/components/prefere
      const hilalUiFixCheckbox = /** @type {HTMLInputElement|null} */ (
        document.getElementById("hilalUiFixEnabled")
      );
-@@ -2183,6 +2220,31 @@ var gHilalPane = {
+@@ -2183,6 +2220,36 @@ var gHilalPane = {
        }
      };
  
@@ -435,9 +435,14 @@ diff --git a/browser/components/preferences/main.js b/browser/components/prefere
 +        false
 +      );
 +      hilalTahoeCheckbox.addEventListener("command", function () {
++        const isTahoe = hilalTahoeCheckbox.checked;
 +        Services.prefs.setBoolPref(
 +          "hilal.tahoe.enabled",
-+          hilalTahoeCheckbox.checked
++          isTahoe
++        );
++        Services.prefs.setBoolPref(
++          "sidebar.verticalTabs.showHorizontal",
++          isTahoe
 +        );
 +        updateHilalCompactOptionsState();
 +      });
@@ -2864,8 +2869,8 @@ diff --git a/browser/locales/en-US/browser/preferences/preferences.ftl b/browser
  
  hilal-uifix-header = UI Enhancements
 +hilal-tahoe-enabled =
-+    .label = Enable Tahoe Safari shell
-+hilal-tahoe-enabled-desc = Uses a macOS Tahoe-inspired Liquid Glass toolbar, sidebar, URL pill, and rounded content frame.
++    .label = Enable Tahoe Safari shell (Experimental / Deneysel)
++hilal-tahoe-enabled-desc = Experimental macOS Tahoe & Safari Liquid Glass shell with combined top horizontal tab strip and vertical sidebar. (Deneysel özellik: Çift sekme düzeni ve Safari cam arayüzü sağlar.)
  hilal-uifix-enabled =
      .label = Enable UI Enhancements (includes Firefox-UI-Fix by @black7375)
  hilal-uifix-connect-to-window =

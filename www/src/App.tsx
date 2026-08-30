@@ -611,7 +611,7 @@ export default function App() {
               aria-label="Discord Server"
             >
               <span className="flex h-4 w-4 items-center justify-center">
-                <SiDiscord className="h-4 w-4" />
+                <SiDiscord size={16} />
               </span>
             </a>
 

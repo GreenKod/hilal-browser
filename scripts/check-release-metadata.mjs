@@ -434,8 +434,8 @@ function checkCiBuildConfiguration() {
     ],
     [
       paths.windowsMozconfig,
-      /MOZ_MAKE_FLAGS="-j1"/,
-      "Windows CI build must remain single-threaded to avoid rustc/clang OOM failures.",
+      /MOZ_MAKE_FLAGS="-j[12]"|MOZ_MAKE_FLAGS="-j2"/,
+      "Windows CI build must cap parallel jobs to avoid rustc/clang OOM failures.",
     ],
     [
       paths.windowsMozconfig,

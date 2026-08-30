@@ -227,9 +227,11 @@
                   } else {
                     actor.sendAsyncMessage("HilalBoosts:ClearBoost");
                   }
-                  windowGlobal
-                    ?.getActor("HilalTahoe")
-                    ?.sendAsyncMessage("HilalTahoe:UpdateOffsets", {});
+                  if (Services.prefs.getBoolPref("hilal.tahoe.enabled", false)) {
+                    windowGlobal
+                      ?.getActor("HilalTahoe")
+                      ?.sendAsyncMessage("HilalTahoe:UpdateOffsets", {});
+                  }
                 } catch (e) {}
               }
             }
@@ -462,6 +464,10 @@
     }
 
     _updateTahoeBoostedPageBackground(boost) {
+      if (!Services.prefs.getBoolPref("hilal.tahoe.enabled", false)) {
+        this._clearTahoeBoostedPageBackground();
+        return;
+      }
       const docEl = document.documentElement;
       if (!boost?.enabled || !boost.colorEnabled || !this._isHexColor(boost.accentColor)) {
         this._clearTahoeBoostedPageBackground();

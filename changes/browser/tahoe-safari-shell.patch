@@ -16,7 +16,7 @@ diff --git a/browser/app/profile/firefox.js b/browser/app/profile/firefox.js
  pref("hilal.privacy.initialized", false);
  pref("hilal.bangs.custom", "[]");
  // Hilal Browser - UI Fix Integration
-+pref("hilal.tahoe.enabled", true);
++pref("hilal.tahoe.enabled", false);
  pref("hilal.uifix.enabled", true);
  // Theme Default Options
  pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);
@@ -146,7 +146,7 @@ diff --git a/browser/components/customizableui/CustomizableUI.sys.mjs b/browser/
      this.initializeForTabsOrientation(CustomizableUI.verticalTabsEnabled);
  
      Services.obs.addObserver(this, "browser-set-toolbar-visibility");
-@@ -4466,10 +4504,17 @@ var CustomizableUIInternal = {
+@@ -4466,10 +4504,15 @@ var CustomizableUIInternal = {
     */
    reset() {
      gResetting = true;
@@ -154,21 +154,19 @@ diff --git a/browser/components/customizableui/CustomizableUI.sys.mjs b/browser/
 -    // We do this before the rest of the reset so widgets are reset to their non-vertical
 -    // positions.
 -    Services.prefs.setBoolPref("sidebar.verticalTabs", false);
-+    if (Services.prefs.getBoolPref("hilal.tahoe.enabled", true)) {
++    if (Services.prefs.getBoolPref("hilal.tahoe.enabled", false)) {
 +      Services.prefs.setStringPref("sidebar.visibility", "hide-sidebar");
 +      Services.prefs.setBoolPref("sidebar.verticalTabs.showHorizontal", true);
 +      Services.prefs.setBoolPref("sidebar.verticalTabs", true);
 +    } else {
-+      // CUI reset also implies resetting verticalTabs back to false.
-+      // We do this before the rest of the reset so widgets are reset to their non-vertical
-+      // positions.
-+      Services.prefs.setBoolPref("sidebar.verticalTabs", false);
++      Services.prefs.setBoolPref("sidebar.verticalTabs.showHorizontal", false);
++      Services.prefs.setBoolPref("sidebar.verticalTabs", true);
 +    }
 +    this.updateHilalHorizontalTabToolbarDefaults();
      this._resetUIState();
  
      // Rebuild each registered area (across windows) to reflect the state that
-@@ -5075,6 +5120,12 @@ var CustomizableUIInternal = {
+@@ -5075,6 +5118,12 @@ var CustomizableUIInternal = {
  
      if (aTopic === "nsPref:changed") {
        this.reconcileSidebarPrefs(aData);
@@ -181,7 +179,7 @@ diff --git a/browser/components/customizableui/CustomizableUI.sys.mjs b/browser/
      }
    },
  
-@@ -5094,14 +5145,19 @@ var CustomizableUIInternal = {
+@@ -5094,14 +5143,19 @@ var CustomizableUIInternal = {
          "initializeForTabsOrientation, savedPlacements",
          savedPlacements
        );
@@ -204,7 +202,7 @@ diff --git a/browser/components/customizableui/CustomizableUI.sys.mjs b/browser/
        gCurrentVerticalTabs = false;
        return;
      }
-@@ -5285,6 +5341,9 @@ var CustomizableUIInternal = {
+@@ -5285,6 +5339,9 @@ var CustomizableUIInternal = {
        return;
      }
      let toVertical = CustomizableUI.verticalTabsEnabled;
@@ -214,7 +212,7 @@ diff --git a/browser/components/customizableui/CustomizableUI.sys.mjs b/browser/
      if (toVertical === gCurrentVerticalTabs) {
        lazy.log.debug("early return as the value hasn't changed");
        return;
-@@ -5378,6 +5437,7 @@ var CustomizableUIInternal = {
+@@ -5378,6 +5435,7 @@ var CustomizableUIInternal = {
        this.saveNavBarWhenVerticalTabsState();
        // We're switching to vertical in this session; pull saved state from pref and update placements
        this.restoreSavedHorizontalTabStripState();
@@ -222,7 +220,7 @@ diff --git a/browser/components/customizableui/CustomizableUI.sys.mjs b/browser/
      }
      // Give the sidebar a chance to adjust before we show/hide the toolbars
      lazy.log.debug("CustomizableUI notifying tabstrip-orientation-change");
-@@ -5396,6 +5456,96 @@ var CustomizableUIInternal = {
+@@ -5396,6 +5454,96 @@ var CustomizableUIInternal = {
        win.TabBarVisibility.update(true);
      }
    },
@@ -319,7 +317,7 @@ diff --git a/browser/components/customizableui/CustomizableUI.sys.mjs b/browser/
  };
  Object.freeze(CustomizableUIInternal);
  
-@@ -5500,7 +5650,7 @@ export var CustomizableUI = {
+@@ -5500,7 +5648,7 @@ export var CustomizableUI = {
    },
  
    get verticalTabsEnabled() {
@@ -417,22 +415,34 @@ diff --git a/browser/components/preferences/main.js b/browser/components/prefere
      const hilalUiFixCheckbox = /** @type {HTMLInputElement|null} */ (
        document.getElementById("hilalUiFixEnabled")
      );
-@@ -2183,6 +2220,19 @@ var gHilalPane = {
+@@ -2183,6 +2220,31 @@ var gHilalPane = {
        }
      };
  
++    const updateHilalCompactOptionsState = () => {
++      const tahoeEnabled = hilalTahoeCheckbox?.checked ?? false;
++      if (hilalSidebarCompactCheckbox) {
++        hilalSidebarCompactCheckbox.disabled = tahoeEnabled;
++      }
++      if (hilalSidebarCompactHideToolbarCheckbox) {
++        hilalSidebarCompactHideToolbarCheckbox.disabled = tahoeEnabled;
++      }
++    };
++
 +    if (hilalTahoeCheckbox) {
 +      hilalTahoeCheckbox.checked = Services.prefs.getBoolPref(
 +        "hilal.tahoe.enabled",
-+        true
++        false
 +      );
 +      hilalTahoeCheckbox.addEventListener("command", function () {
 +        Services.prefs.setBoolPref(
 +          "hilal.tahoe.enabled",
 +          hilalTahoeCheckbox.checked
 +        );
++        updateHilalCompactOptionsState();
 +      });
 +    }
++    updateHilalCompactOptionsState();
 +
      if (hilalUiFixCheckbox) {
        hilalUiFixCheckbox.checked = Services.prefs.getBoolPref(
@@ -600,7 +610,7 @@ diff --git a/browser/components/sidebar/browser-sidebar.js b/browser/components/
      let tabStrip = gBrowser.tabContainer;
      let arrowScrollbox = tabStrip.arrowScrollbox;
      let currentScrollOrientation = arrowScrollbox.getAttribute("orient");
-@@ -2414,6 +2511,276 @@ var SidebarController = {
+@@ -2414,6 +2511,284 @@ var SidebarController = {
      }
    },
  
@@ -655,6 +665,15 @@ diff --git a/browser/components/sidebar/browser-sidebar.js b/browser/components/
 +  },
 +
 +  updateTahoeGeometry() {
++    let docEl = document.documentElement;
++    if (!Services.prefs.getBoolPref("hilal.tahoe.enabled", false)) {
++      docEl.style.removeProperty("--hilal-safari-content-top");
++      docEl.style.removeProperty("--hilal-safari-content-bottom");
++      docEl.style.removeProperty("--hilal-safari-content-height");
++      docEl.style.removeProperty("--hilal-safari-page-bg");
++      docEl.style.removeProperty("--hilal-safari-page-bg-top");
++      return;
++    }
 +    let tabbox = document.getElementById("tabbrowser-tabbox");
 +    if (!tabbox) {
 +      return;
@@ -664,7 +683,6 @@ diff --git a/browser/components/sidebar/browser-sidebar.js b/browser/components/
 +    let top = Math.max(0, Math.round(rect.top));
 +    let bottom = Math.max(0, Math.round(window.innerHeight - rect.bottom));
 +    let height = Math.max(0, Math.round(rect.height));
-+    let docEl = document.documentElement;
 +    docEl.style.setProperty("--hilal-safari-content-top", `${top}px`);
 +    docEl.style.setProperty("--hilal-safari-content-bottom", `${bottom}px`);
 +    docEl.style.setProperty("--hilal-safari-content-height", `${height}px`);
@@ -823,7 +841,7 @@ diff --git a/browser/components/sidebar/browser-sidebar.js b/browser/components/
 +  },
 +
 +  isTahoeSafariLayoutActive() {
-+    if (!Services.prefs.getBoolPref("hilal.tahoe.enabled", true)) {
++    if (!Services.prefs.getBoolPref("hilal.tahoe.enabled", false)) {
 +      return false;
 +    }
 +    let docEl = document.documentElement;
@@ -877,16 +895,42 @@ diff --git a/browser/components/sidebar/browser-sidebar.js b/browser/components/
    debouncedMouseEnter() {
      const contentArea = document.getElementById("tabbrowser-tabbox");
      this._box.toggleAttribute("sidebar-launcher-hovered", true);
-@@ -2933,9 +3300,10 @@ var HilalCompactMode = {
+@@ -2838,6 +3213,7 @@ var HilalCompactMode = {
+       if (
+         data === this.PREF ||
+         data === this.HIDE_TOOLBOX_PREF ||
++        data === "hilal.tahoe.enabled" ||
+         data === "hilal.workspaces.enabled" ||
+         data === "sidebar.verticalTabs"
+       ) {
+@@ -2846,6 +3222,7 @@ var HilalCompactMode = {
+     };
+     Services.prefs.addObserver(this.PREF, this._prefObserver);
+     Services.prefs.addObserver(this.HIDE_TOOLBOX_PREF, this._prefObserver);
++    Services.prefs.addObserver("hilal.tahoe.enabled", this._prefObserver);
+     Services.prefs.addObserver("hilal.workspaces.enabled", this._prefObserver);
+     Services.prefs.addObserver("sidebar.verticalTabs", this._prefObserver);
+     window.addEventListener("popupshown", this, true);
+@@ -2874,6 +3251,7 @@ var HilalCompactMode = {
+     if (this._prefObserver) {
+       Services.prefs.removeObserver(this.PREF, this._prefObserver);
+       Services.prefs.removeObserver(this.HIDE_TOOLBOX_PREF, this._prefObserver);
++      Services.prefs.removeObserver("hilal.tahoe.enabled", this._prefObserver);
+       Services.prefs.removeObserver(
+         "hilal.workspaces.enabled",
+         this._prefObserver
+@@ -2933,9 +3311,11 @@ var HilalCompactMode = {
        false
      );
      const isSidebarActive = workspacesEnabled || verticalTabsEnabled;
 -    const isWelcomeStage = document.documentElement.hasAttribute("hilal-welcome-stage");
+-    const actualCompact = compact;
+-
 +    const isWelcomeStage = document.documentElement.hasAttribute(
 +      "hilal-welcome-stage"
 +    );
-     const actualCompact = compact;
--
++    const actualCompact =
++      compact && !Services.prefs.getBoolPref("hilal.tahoe.enabled", false);
      const compactSidebar = actualCompact && isSidebarActive;
      const hideToolbox =
        actualCompact && Services.prefs.getBoolPref(this.HIDE_TOOLBOX_PREF, true);

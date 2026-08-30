@@ -983,9 +983,40 @@ sidebar-main,
   color: var(--hilal-sidebar-highlight-text) !important;
 }
 
+#sidebar-main[hilal-sidebar] .tabbrowser-tab .tab-content {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  padding-inline: 6px 4px !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+}
+
+#sidebar-main[hilal-sidebar] .tabbrowser-tab .tab-label-container {
+  display: flex !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+}
+
 /* Font weight and alignment */
 #sidebar-main[hilal-sidebar] .tab-label {
-  font-weight: 600 !important;
+  font-weight: 550 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+  display: block !important;
+}
+
+#sidebar-main[hilal-sidebar] .tabbrowser-tab .tab-icon-image {
+  flex-shrink: 0 !important;
+  margin-inline-end: 6px !important;
 }
 
 /* Hover-scaleable close button on tabs */
@@ -999,7 +1030,9 @@ sidebar-main,
   padding: 2px !important;
   width: 16px !important;
   height: 16px !important;
+  margin-inline-start: auto !important;
   margin-inline-end: 2px !important;
+  flex-shrink: 0 !important;
 }
 
 #sidebar-main[hilal-sidebar] .tabbrowser-tab:hover .tab-close-button {

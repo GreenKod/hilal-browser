@@ -1064,7 +1064,8 @@ sidebar-main,
 }
 
 /* Card-style grid for Pinned Tabs in vertical mode */
-#sidebar-main[hilal-sidebar] #pinned-tabs-container[orient="vertical"]::part(items-wrapper) {
+#sidebar-main[hilal-sidebar] #pinned-tabs-container[orient="vertical"]::part(items-wrapper),
+#pinned-tabs-container[orient="vertical"]::part(items-wrapper) {
   display: grid !important;
   grid-template-columns: repeat(3, 1fr) !important;
   grid-auto-rows: auto !important;
@@ -1072,7 +1073,8 @@ sidebar-main,
   padding: 6px 4px !important;
 }
 
-#sidebar-main[hilal-sidebar] #pinned-tabs-container[orient="vertical"] .tabbrowser-tab {
+#sidebar-main[hilal-sidebar] #pinned-tabs-container[orient="vertical"] .tabbrowser-tab,
+#pinned-tabs-container[orient="vertical"] .tabbrowser-tab {
   aspect-ratio: 1 !important;
   width: 100% !important;
   height: auto !important;
@@ -1090,27 +1092,50 @@ sidebar-main,
     transform 0.15s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
 }
 
-#sidebar-main[hilal-sidebar] #pinned-tabs-container[orient="vertical"] .tab-stack {
+#sidebar-main[hilal-sidebar] #pinned-tabs-container[orient="vertical"] .tab-stack,
+#pinned-tabs-container[orient="vertical"] .tab-stack {
   width: 100% !important;
   height: 100% !important;
   position: relative !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
 }
 
-#sidebar-main[hilal-sidebar] #pinned-tabs-container[orient="vertical"] .tab-content {
+#sidebar-main[hilal-sidebar] #pinned-tabs-container[orient="vertical"] .tab-content,
+#pinned-tabs-container[orient="vertical"] .tab-content {
   width: 100% !important;
   height: 100% !important;
   display: flex !important;
   justify-content: center !important;
   align-items: center !important;
   padding: 0 !important;
+  margin: 0 !important;
 }
 
-#sidebar-main[hilal-sidebar] #pinned-tabs-container[orient="vertical"] .tab-icon-image {
-  width: 22px !important;
-  height: 22px !important;
+/* Hide label, close button, and pin badge completely in pinned grid */
+#sidebar-main[hilal-sidebar] #pinned-tabs-container[orient="vertical"] .tab-label-container,
+#sidebar-main[hilal-sidebar] #pinned-tabs-container[orient="vertical"] .tab-label,
+#sidebar-main[hilal-sidebar] #pinned-tabs-container[orient="vertical"] .tab-close-button,
+#sidebar-main[hilal-sidebar] #pinned-tabs-container[orient="vertical"] .tab-pin-icon,
+#pinned-tabs-container[orient="vertical"] .tab-label-container,
+#pinned-tabs-container[orient="vertical"] .tab-label,
+#pinned-tabs-container[orient="vertical"] .tab-close-button,
+#pinned-tabs-container[orient="vertical"] .tab-pin-icon {
+  display: none !important;
+  visibility: hidden !important;
 }
 
-#sidebar-main[hilal-sidebar] #pinned-tabs-container[orient="vertical"] .tabbrowser-tab[usercontextid] .tab-context-line {
+#sidebar-main[hilal-sidebar] #pinned-tabs-container[orient="vertical"] .tab-icon-image,
+#pinned-tabs-container[orient="vertical"] .tab-icon-image {
+  width: 20px !important;
+  height: 20px !important;
+  margin: 0 !important;
+  display: block !important;
+}
+
+#sidebar-main[hilal-sidebar] #pinned-tabs-container[orient="vertical"] .tabbrowser-tab[usercontextid] .tab-context-line,
+#pinned-tabs-container[orient="vertical"] .tabbrowser-tab[usercontextid] .tab-context-line {
   top: auto !important;
   bottom: 1.5px !important;
   left: 4px !important;
@@ -1122,16 +1147,19 @@ sidebar-main,
   display: block !important;
 }
 
-#sidebar-main[hilal-sidebar] #pinned-tabs-container[orient="vertical"] .tabbrowser-tab:hover {
+#sidebar-main[hilal-sidebar] #pinned-tabs-container[orient="vertical"] .tabbrowser-tab:hover,
+#pinned-tabs-container[orient="vertical"] .tabbrowser-tab:hover {
   transform: translateY(-1px) !important;
 }
 
-#sidebar-main[hilal-sidebar] #pinned-tabs-container[orient="vertical"] .tabbrowser-tab[selected="true"] {
+#sidebar-main[hilal-sidebar] #pinned-tabs-container[orient="vertical"] .tabbrowser-tab[selected="true"],
+#pinned-tabs-container[orient="vertical"] .tabbrowser-tab[selected="true"] {
   background-color: var(--hilal-sidebar-highlight) !important;
   border-color: color-mix(in srgb, var(--hilal-sidebar-text) 10%, transparent) !important;
 }
 
-#sidebar-main[hilal-sidebar] #pinned-tabs-container[orient="vertical"] .tabbrowser-tab .tab-background {
+#sidebar-main[hilal-sidebar] #pinned-tabs-container[orient="vertical"] .tabbrowser-tab .tab-background,
+#pinned-tabs-container[orient="vertical"] .tabbrowser-tab .tab-background {
   border-radius: 8px !important;
   position: absolute !important;
   top: 0 !important;
